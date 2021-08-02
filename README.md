@@ -1,7 +1,7 @@
 # xinfo
 
-A tool with no external dependencies to dump information about the currently
-running X server instance.
+A tool with no external dependencies to dump information about an X server
+instance.
 
 ## Building and running
 
