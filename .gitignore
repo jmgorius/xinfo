@@ -1,0 +1,10 @@
+# Ignore build files
+xinfo
+
+# Ignore tools
+.vs/
+.vscode/
+.idea/
+.clangd/
+.cache/
+compile_commands.json
