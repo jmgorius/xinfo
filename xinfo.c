@@ -67,6 +67,10 @@ static ssize_t write_n(int fd, const void *buffer, size_t n) {
 #define X_PAD(x) ((x) + X_PADDING((x)))
 
 #define X_CONNECTION_STATUS_SUCCESS 1
+#define X_BYTE_ORDER_LITTLE_ENDIAN 0
+#define X_BITMAP_FORMAT_BIT_ORDER_LEAST_SIGNIFICANT 0
+#define X_BACKING_STORES_NEVER 0
+#define X_BACKING_STORES_WHEN_MAPPED 1
 
 struct x_setup_request {
   uint8_t byte_order; /* Either 'B' for big endian, or 'l' for little endian */
@@ -163,6 +167,8 @@ struct x_setup_data {
   char *vendor_name;
   struct x_format *pixmap_formats;
   struct x_screen *roots;
+  uint16_t version_major;
+  uint16_t version_minor;
 };
 
 static struct {
@@ -258,6 +264,9 @@ static void x_connect_to_socket(int fd, size_t protocol_name_len,
     die("Connection to X server failed");
   }
 
+  x_connection.setup_data.version_major = response.protocol_version_major;
+  x_connection.setup_data.version_minor = response.protocol_version_minor;
+
   /* Read the setup data header and the vendor name string */
   const char *curr_data = additional_data;
   memcpy(&x_connection.setup_data.data, curr_data,
@@ -272,6 +281,7 @@ static void x_connect_to_socket(int fd, size_t protocol_name_len,
   }
   memcpy(x_connection.setup_data.vendor_name, curr_data,
          x_connection.setup_data.data.vendor_length);
+  curr_data += x_connection.setup_data.data.vendor_length;
 
   /* Read the pixmap format data */
   x_connection.setup_data.pixmap_formats = calloc(
@@ -570,9 +580,120 @@ static void x_connect(void) {
   x_connect_to_display(display_name);
 }
 
-static void dump_x_connection_data(void) {}
+#define LEFT_PAD 0
+#define FIELD_WIDTH 45
+
+#define STRINGIFY_IMPL(x) #x
+#define STRINGIFY(x) STRINGIFY_IMPL(x)
+#define FILL "........................................"
+#define SPACE "                                        "
+#define PRINT_FIELD(name, format, ...)                                         \
+  printf("%." STRINGIFY(LEFT_PAD) "s%." STRINGIFY(FIELD_WIDTH) "s " format     \
+                                                               "\n",           \
+         SPACE, name FILL, __VA_ARGS__)
+
+static void dump_x_connection_data(void) {
+  const char *image_byte_order =
+      x_connection.setup_data.data.image_byte_order ==
+              X_BYTE_ORDER_LITTLE_ENDIAN
+          ? "little endian"
+          : "big endian";
+  const char *bitmap_format_bit_order =
+      x_connection.setup_data.data.bitmap_format_bit_order ==
+              X_BITMAP_FORMAT_BIT_ORDER_LEAST_SIGNIFICANT
+          ? "least significant"
+          : "most significant";
+  unsigned int release_major =
+      x_connection.setup_data.data.release_number / 10000000;
+  unsigned int release_minor =
+      (x_connection.setup_data.data.release_number / 100000) % 100;
+  unsigned int release_patch =
+      (x_connection.setup_data.data.release_number / 1000) % 100;
+  unsigned int release_build =
+      x_connection.setup_data.data.release_number % 1000;
+
+  PRINT_FIELD("Vendor", "%s", x_connection.setup_data.vendor_name);
+  PRINT_FIELD("Version", "%u.%u", x_connection.setup_data.version_major,
+              x_connection.setup_data.version_minor);
+  if (release_build != 0)
+    PRINT_FIELD("Release number", "%u.%u.%u.%u", release_major, release_minor,
+                release_patch, release_build);
+  else
+    PRINT_FIELD("Release number", "%u.%u.%u", release_major, release_minor,
+                release_patch);
+  putc('\n', stdout);
+  PRINT_FIELD("Resource ID base", "0x%08x",
+              x_connection.setup_data.data.resource_id_base);
+  PRINT_FIELD("Resource ID mask", "0x%08x",
+              x_connection.setup_data.data.resource_id_mask);
+  PRINT_FIELD("Motion buffer size", "%u",
+              x_connection.setup_data.data.motion_buffer_size);
+  PRINT_FIELD("Maximum request length", "%u bytes",
+              x_connection.setup_data.data.maximum_request_length);
+  PRINT_FIELD("Image byte order", "%s", image_byte_order);
+  PRINT_FIELD("Bitmap format bit order", "%s first", bitmap_format_bit_order);
+  PRINT_FIELD("Bitmap format scanline unit", "%u",
+              x_connection.setup_data.data.bitmap_format_scanline_unit);
+  PRINT_FIELD("Bitmap format scanline pad", "%u",
+              x_connection.setup_data.data.bitmap_format_scanline_pad);
+  PRINT_FIELD("Max keycode", "%u", x_connection.setup_data.data.max_keycode);
+  PRINT_FIELD("Min keycode", "%u", x_connection.setup_data.data.min_keycode);
+  PRINT_FIELD("Number of pixmap formats", "%u",
+              x_connection.setup_data.data.num_pixmap_formats);
+  PRINT_FIELD("Number of screens", "%u",
+              x_connection.setup_data.data.num_roots);
+
+  printf("\nPixmap formats:\n");
+  for (size_t i = 0; i < x_connection.setup_data.data.num_pixmap_formats; ++i) {
+    const struct x_format *format = &x_connection.setup_data.pixmap_formats[i];
+    printf("  * depth = %2u, bits per pixel = %2u, scanline pad = %u\n",
+           format->depth, format->bits_per_pixel, format->scanline_pad);
+  }
+
+  printf("\nScreens:\n");
+  for (size_t i = 0; i < x_connection.setup_data.data.num_roots; ++i) {
+    const struct x_screen *screen = &x_connection.setup_data.roots[i];
+    printf("  Screen #%zu\n", i);
+#undef LEFT_PAD
+#undef FIELD_WIDTH
+#define LEFT_PAD 4
+#define FIELD_WIDTH 41
+    const char *backing_stores =
+        screen->data.backing_stores == X_BACKING_STORES_NEVER
+            ? "never"
+            : (screen->data.backing_stores == X_BACKING_STORES_WHEN_MAPPED
+                   ? "when mapped"
+                   : "always");
+    PRINT_FIELD("Root", "0x%08x", screen->data.root);
+    PRINT_FIELD("Default colormap", "0x%08x", screen->data.default_colormap);
+    PRINT_FIELD("White pixel", "0x%08x", screen->data.white_pixel);
+    PRINT_FIELD("Black pixel", "0x%08x", screen->data.black_pixel);
+    /* TODO: Pretty-print this field */
+    PRINT_FIELD("Current input mask", "0x%08x",
+                screen->data.current_input_mask);
+    PRINT_FIELD("Size", "%ux%u pixels (%ux%u mm)", screen->data.width_in_pixels,
+                screen->data.height_in_pixels,
+                screen->data.width_in_millimeters,
+                screen->data.height_in_millimeters);
+    PRINT_FIELD("Installed maps", "min = %u, max = %u",
+                screen->data.min_installed_maps,
+                screen->data.max_installed_maps);
+    PRINT_FIELD("Root visual id", "0x%08x", screen->data.root_visual_id);
+    PRINT_FIELD("Backing stores", "%s", backing_stores);
+    PRINT_FIELD("Save unders", "%s", screen->data.save_unders ? "yes" : "no");
+    PRINT_FIELD("Root depth", "%u", screen->data.root_depth);
+    PRINT_FIELD("Number of allowed depths", "%u",
+                screen->data.num_allowed_depths);
+    printf("    Allowed depths:\n");
+    for (size_t j = 0; j < screen->data.num_allowed_depths; ++j)
+      printf("      * depth = %2u, number of visuals: %u\n",
+             screen->allowed_depths[j].data.depth,
+             screen->allowed_depths[j].data.num_visuals);
+  }
+}
 
 int main() {
+  printf("xinfo - X server information dumper\n\n");
   x_connect();
 
   dump_x_connection_data();
