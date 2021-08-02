@@ -10,3 +10,8 @@ To build the code in this repository, run
 $ make
 ```
 The latter command produces the `xinfo` executable.
+
+## Licensing
+
+This is free and unencumbered software released into the public domain. See the
+[UNLICENSE](UNLICENSE) file for more information.
