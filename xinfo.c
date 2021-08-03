@@ -938,6 +938,7 @@ static int generic_query_version32_noparam(unsigned int opcode,
   return 0;
 }
 
+#define X_EXTENSION_NAME_APPLE_DRI "Apple-DRI"
 #define X_EXTENSION_NAME_APPLE_WM "Apple-WM"
 #define X_EXTENSION_NAME_BIG_REQUESTS "BIG-REQUESTS"
 #define X_EXTENSION_NAME_COMPOSITE "Composite"
@@ -956,11 +957,15 @@ static int generic_query_version32_noparam(unsigned int opcode,
 #define X_EXTENSION_NAME_LGE "LGE"
 #define X_EXTENSION_NAME_MIT_SCREEN_SAVER "MIT-SCREEN-SAVER"
 #define X_EXTENSION_NAME_MIT_SHM "MIT-SHM"
+#define X_EXTENSION_NAME_NV_CONTROL "NV-CONTROL"
+#define X_EXTENSION_NAME_NV_GLX "NV-GLX"
 #define X_EXTENSION_NAME_PRESENT "Present"
 #define X_EXTENSION_NAME_RANDR "RANDR"
 #define X_EXTENSION_NAME_RECORD "RECORD"
 #define X_EXTENSION_NAME_RENDER "RENDER"
 #define X_EXTENSION_NAME_SECURITY "SECURITY"
+#define X_EXTENSION_NAME_SELINUX "SELinux"
+#define X_EXTENSION_NAME_SGI_GLX "SGI-GLX"
 #define X_EXTENSION_NAME_SHAPE "SHAPE"
 #define X_EXTENSION_NAME_SYNC "SYNC"
 #define X_EXTENSION_NAME_TOG_CUP "TOG-CUP"
@@ -968,6 +973,7 @@ static int generic_query_version32_noparam(unsigned int opcode,
 #define X_EXTENSION_NAME_X_RESOURCE "X-Resource"
 #define X_EXTENSION_NAME_XC_APPGROUP "XC-APPGROUP"
 #define X_EXTENSION_NAME_XC_MISC "XC-MISC"
+#define X_EXTENSION_NAME_XC_VID_MODE_EXTENSION "XC-VidModeExtension"
 #define X_EXTENSION_NAME_XCALIBRATE "XCALIBRATE"
 #define X_EXTENSION_NAME_XFIXES "XFIXES"
 #define X_EXTENSION_NAME_XFREE86_BIGFONT "XFree86-Bigfont"
@@ -987,6 +993,7 @@ static int generic_query_version32_noparam(unsigned int opcode,
 #define X_OPCODE_BIG_REQUESTS_ENABLE 0
 #define X_OPCODE_GLX_QUERY_VERSION 7
 #define X_OPCODE_MIT_SCREEN_SAVER_QUERY_VERSION 0
+#define X_OPCODE_SELINUX_QUERY_VERSION 0
 #define X_OPCODE_XINPUT_EXTENSION_QUERY_VERSION 47
 #define X_OPCODE_XTEST_QUERY_VERSION 0
 
@@ -1064,6 +1071,29 @@ static int x_mit_screen_saver_query_version(unsigned int opcode,
   return 0;
 }
 
+static int x_selinux_query_version(unsigned int opcode, unsigned int *major,
+                                   unsigned int *minor) {
+  struct x_generic_query_version8_request request = {
+      .opcode = opcode,
+      .extension_opcode = X_OPCODE_SELINUX_QUERY_VERSION,
+      .request_len = sizeof(struct x_generic_query_version8_request) / 4,
+      .version_major = (uint8_t)-1,
+      .version_minor = (uint8_t)-1,
+  };
+  struct x_generic_query_version16_reply reply = {0};
+
+  ssize_t num_written = write_n(x_connection.fd, &request, sizeof(request));
+  if (num_written != sizeof(request))
+    return 1;
+  ssize_t num_read = read_n(x_connection.fd, &reply, sizeof(reply));
+  if (num_read != sizeof(reply) || reply.status != X_REPLY)
+    return 1;
+
+  *major = reply.version_major;
+  *minor = reply.version_minor;
+  return 0;
+}
+
 static int x_xtest_query_version(unsigned int opcode, unsigned int *major,
                                  unsigned int *minor) {
   struct x_xtest_query_version_request request = {
@@ -1094,6 +1124,8 @@ struct x_extension_info {
 };
 
 static struct x_extension_info x_extensions[] = {
+    {.name = X_EXTENSION_NAME_APPLE_DRI,
+     .version_query_func = x_generic_query_version16_noparam_zero},
     {.name = X_EXTENSION_NAME_APPLE_WM,
      .version_query_func = x_generic_query_version16_noparam_zero},
     {.name = X_EXTENSION_NAME_BIG_REQUESTS,
@@ -1127,6 +1159,10 @@ static struct x_extension_info x_extensions[] = {
      .version_query_func = x_mit_screen_saver_query_version},
     {.name = X_EXTENSION_NAME_MIT_SHM,
      .version_query_func = x_generic_query_version16_noparam_zero},
+    {.name = X_EXTENSION_NAME_NV_CONTROL,
+     .version_query_func = x_generic_query_version16_noparam_zero},
+    {.name = X_EXTENSION_NAME_NV_GLX, /* alias for GLX */
+     .version_query_func = x_glx_query_version},
     {.name = X_EXTENSION_NAME_PRESENT,
      .version_query_func = x_generic_query_version32_zero},
     {.name = X_EXTENSION_NAME_RANDR,
@@ -1137,6 +1173,10 @@ static struct x_extension_info x_extensions[] = {
      .version_query_func = x_generic_query_version32_zero},
     {.name = X_EXTENSION_NAME_SECURITY,
      .version_query_func = x_generic_query_version16_zero},
+    {.name = X_EXTENSION_NAME_SELINUX,
+     .version_query_func = x_selinux_query_version},
+    {.name = X_EXTENSION_NAME_SGI_GLX, /* alias for GLX */
+     .version_query_func = x_glx_query_version},
     {.name = X_EXTENSION_NAME_SHAPE,
      .version_query_func = x_generic_query_version16_noparam_zero},
     {.name = X_EXTENSION_NAME_SYNC,
@@ -1151,6 +1191,9 @@ static struct x_extension_info x_extensions[] = {
      .version_query_func = x_generic_query_version16_zero},
     {.name = X_EXTENSION_NAME_XC_MISC,
      .version_query_func = x_generic_query_version16_zero},
+    /* alias for XFree86-VidModeExtension */
+    {.name = X_EXTENSION_NAME_XC_VID_MODE_EXTENSION,
+     .version_query_func = x_generic_query_version16_noparam_zero},
     {.name = X_EXTENSION_NAME_XCALIBRATE,
      .version_query_func = x_generic_query_version32_zero},
     {.name = X_EXTENSION_NAME_XFIXES,
