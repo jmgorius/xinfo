@@ -7,7 +7,6 @@
 
 #define _POSIX_C_SOURCE 200112L
 
-#include <asm-generic/errno-base.h>
 #include <errno.h>
 #include <limits.h>
 #include <netdb.h>
