@@ -641,7 +641,7 @@ static void x_connect_to_display(const char *full_display_name) {
 
   if (!auth_data) {
     free(auth_protocol_name);
-    die("No X authentication data");
+    die("No X authentication data for the specified display");
   }
 
   x_connect_to_display_with_auth_data(full_display_name, auth_protocol_name_len,
@@ -659,7 +659,7 @@ static void x_connect(void) {
   char *display_name = getenv("DISPLAY");
   if (!display_name) {
     fprintf(stderr, "WARNING: No DISPLAY environment variable found, trying "
-                    "default X display name\n");
+                    "default X display name ':0'\n");
     display_name = ":0";
   }
   x_connect_to_display(display_name);
