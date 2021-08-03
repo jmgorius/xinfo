@@ -19,7 +19,7 @@
 #include <unistd.h>
 
 static void die(const char *msg) {
-  fprintf(stderr, "ERROR: %s\n", msg);
+  fprintf(stderr, "FATAL ERROR: %s\n", msg);
   exit(1);
 }
 
