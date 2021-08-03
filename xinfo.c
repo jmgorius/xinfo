@@ -106,6 +106,16 @@ static ssize_t write_n(int fd, const void *buffer, size_t n) {
 #define X_EXTENSION_NAME_BIG_REQUESTS "BIG-REQUESTS"
 #define X_EXTENSION_NAME_COMPOSITE "Composite"
 #define X_EXTENSION_NAME_DAMAGE "DAMAGE"
+#define X_EXTENSION_NAME_DOUBLE_BUFFER "DOUBLE-BUFFER"
+#define X_EXTENSION_NAME_DPMS "DPMS"
+
+#define X_OPCODE_BIG_REQUESTS_ENABLE 0
+#define X_OPCODE_COMPOSITE_QUERY_VERSION 0
+#define X_OPCODE_DAMAGE_QUERY_VERSION 0
+#define X_OPCODE_DOUBLE_BUFFER_GET_VERSION 0
+#define X_OPCODE_DPMS_GET_VERSION 0
+#define X_OPCODE_DPMS_CAPABLE 1
+#define X_OPCODE_DPMS_GET_TIMEOUTS 2
 
 struct x_setup_request {
   uint8_t byte_order; /* Either 'B' for big endian, or 'l' for little endian */
@@ -131,7 +141,7 @@ struct x_setup_data_impl {
   uint32_t resource_id_mask;
   uint32_t motion_buffer_size;
   uint16_t vendor_length;
-  uint16_t maximum_request_length;
+  uint16_t maximum_request_len;
   uint8_t num_roots;
   uint8_t num_pixmap_formats;
   uint8_t image_byte_order;
@@ -212,6 +222,8 @@ static struct {
   unsigned int big_requests_opcode;
   unsigned int composite_opcode;
   unsigned int damage_opcode;
+  unsigned int double_buffer_opcode;
+  unsigned int dpms_opcode;
 } x_connection = {
     .fd = -1,
 };
@@ -219,7 +231,7 @@ static struct {
 struct x_get_font_path_request {
   uint8_t opcode;
   uint8_t pad;
-  uint16_t request_length;
+  uint16_t request_len;
 };
 
 struct x_get_font_path_reply {
@@ -234,7 +246,7 @@ struct x_get_font_path_reply {
 struct x_list_extensions_request {
   uint8_t opcode;
   uint8_t pad;
-  uint16_t request_length;
+  uint16_t request_len;
 };
 
 struct x_list_extensions_reply {
@@ -248,7 +260,7 @@ struct x_list_extensions_reply {
 struct x_query_extension_request {
   uint8_t opcode;
   uint8_t pad1;
-  uint16_t request_length;
+  uint16_t request_len;
   uint16_t name_len;
   uint16_t pad2;
 };
@@ -268,7 +280,7 @@ struct x_query_extension_reply {
 struct x_big_requests_enable_request {
   uint8_t opcode;
   uint8_t extension_opcode;
-  uint16_t request_length;
+  uint16_t request_len;
 };
 
 struct x_big_requests_enable_reply {
@@ -276,14 +288,14 @@ struct x_big_requests_enable_reply {
   uint8_t pad1;
   uint16_t sequence_number;
   uint32_t additional_data_len;
-  uint32_t max_request_length;
+  uint32_t max_request_len;
   uint8_t pad[18];
 };
 
 struct x_composite_query_version_request {
   uint8_t opcode;
   uint8_t extension_opcode;
-  uint16_t request_length;
+  uint16_t request_len;
   uint32_t version_major;
   uint32_t version_minor;
 };
@@ -301,7 +313,7 @@ struct x_composite_query_version_reply {
 struct x_damage_query_version_request {
   uint8_t opcode;
   uint8_t extension_opcode;
-  uint16_t request_length;
+  uint16_t request_len;
   uint32_t version_major;
   uint32_t version_minor;
 };
@@ -314,6 +326,75 @@ struct x_damage_query_version_reply {
   uint32_t version_major;
   uint32_t version_minor;
   uint8_t pad[14];
+};
+
+struct x_double_buffer_get_version_request {
+  uint8_t opcode;
+  uint8_t extension_opcode;
+  uint16_t request_len;
+  uint8_t version_major;
+  uint8_t version_minor;
+  uint16_t pad;
+};
+
+struct x_double_buffer_get_version_reply {
+  uint8_t status;
+  uint8_t pad1;
+  uint16_t sequence_number;
+  uint32_t additional_data_len;
+  uint8_t version_major;
+  uint8_t version_minor;
+  uint8_t pad[22];
+};
+
+struct x_dpms_get_version_request {
+  uint8_t opcode;
+  uint8_t extension_opcode;
+  uint16_t request_len;
+  uint16_t version_major;
+  uint16_t version_minor;
+};
+
+struct x_dpms_get_version_reply {
+  uint8_t status;
+  uint8_t pad1;
+  uint16_t sequence_number;
+  uint32_t additional_data_len;
+  uint16_t version_major;
+  uint16_t version_minor;
+  uint8_t pad[20];
+};
+
+struct x_dpms_capable_request {
+  uint8_t opcode;
+  uint8_t extension_opcode;
+  uint16_t request_len;
+};
+
+struct x_dpms_capable_reply {
+  uint8_t status;
+  uint8_t pad1;
+  uint16_t sequence_number;
+  uint32_t additional_data_len;
+  uint8_t capable;
+  uint8_t pad[23];
+};
+
+struct x_dpms_get_timeouts_request {
+  uint8_t opcode;
+  uint8_t extension_opcode;
+  uint16_t request_len;
+};
+
+struct x_dpms_get_timeouts_reply {
+  uint8_t status;
+  uint8_t pad1;
+  uint16_t sequence_number;
+  uint32_t additional_data_len;
+  uint16_t standby_timeout;
+  uint16_t suspend_timeout;
+  uint16_t off_timeout;
+  uint8_t pad[18];
 };
 
 static void x_disconnect(void) {
@@ -724,7 +805,7 @@ static unsigned int x_get_extension_opcode(const char *name) {
   size_t name_len = strlen(name);
   struct x_query_extension_request request = {
       .opcode = X_OPCODE_QUERY_EXTENSION,
-      .request_length = 2 + (X_PAD(name_len) / 4),
+      .request_len = 2 + (X_PAD(name_len) / 4),
       .name_len = name_len,
   };
   unsigned int opcode = 0;
@@ -758,6 +839,10 @@ static unsigned int enable_extension(const char *name) {
     x_connection.composite_opcode = opcode;
   else if (strcmp(name, X_EXTENSION_NAME_DAMAGE) == 0)
     x_connection.damage_opcode = opcode;
+  else if (strcmp(name, X_EXTENSION_NAME_DOUBLE_BUFFER) == 0)
+    x_connection.double_buffer_opcode = opcode;
+  else if (strcmp(name, X_EXTENSION_NAME_DPMS) == 0)
+    x_connection.dpms_opcode = opcode;
   return opcode;
 }
 
@@ -810,7 +895,7 @@ static void print_x_connection_data(void) {
   PRINT_FIELD("Motion buffer size", "%u",
               x_connection.setup_data.data.motion_buffer_size);
   PRINT_FIELD("Maximum request length", "%u bytes",
-              4 * x_connection.setup_data.data.maximum_request_length);
+              4 * x_connection.setup_data.data.maximum_request_len);
   PRINT_FIELD("Image byte order", "%s", image_byte_order);
   PRINT_FIELD("Bitmap format bit order", "%s first", bitmap_format_bit_order);
   PRINT_FIELD("Bitmap format scanline unit", "%u",
@@ -962,7 +1047,7 @@ static void print_x_connection_data(void) {
 static void print_x_font_path(void) {
   struct x_get_font_path_request request = {
       .opcode = X_OPCODE_GET_FONT_PATH,
-      .request_length = 1,
+      .request_len = sizeof(struct x_get_font_path_request) / 4,
   };
   char *additional_data = 0;
 
@@ -1015,7 +1100,7 @@ static int string_comparator(const void *lhs, const void *rhs) {
 static void print_x_extensions(void) {
   struct x_list_extensions_request request = {
       .opcode = X_OPCODE_LIST_EXTENSIONS,
-      .request_length = 1,
+      .request_len = sizeof(struct x_list_extensions_request) / 4,
   };
   struct x_list_extensions_reply reply = {};
   char *additional_data = 0;
@@ -1087,8 +1172,8 @@ extensions_error:
 static void print_big_requests_info(void) {
   struct x_big_requests_enable_request request = {
       .opcode = x_connection.big_requests_opcode,
-      .extension_opcode = 0,
-      .request_length = 1,
+      .extension_opcode = X_OPCODE_BIG_REQUESTS_ENABLE,
+      .request_len = sizeof(struct x_big_requests_enable_request) / 4,
   };
   struct x_big_requests_enable_reply reply = {};
 
@@ -1105,7 +1190,7 @@ static void print_big_requests_info(void) {
 #define LEFT_PAD 4
 #define FIELD_WIDTH 41
   PRINT_FIELD("Maximum request length", "%zu bytes",
-              4 * (uint64_t)reply.max_request_length);
+              4 * (uint64_t)reply.max_request_len);
 
   return;
 error:
@@ -1117,8 +1202,8 @@ error:
 static void print_composite_info(void) {
   struct x_composite_query_version_request request = {
       .opcode = x_connection.composite_opcode,
-      .extension_opcode = 0,
-      .request_length = 3,
+      .extension_opcode = X_OPCODE_COMPOSITE_QUERY_VERSION,
+      .request_len = sizeof(struct x_composite_query_version_request) / 4,
       .version_major = (uint32_t)-1,
       .version_minor = (uint32_t)-1,
   };
@@ -1149,8 +1234,8 @@ error:
 static void print_damage_info(void) {
   struct x_damage_query_version_request request = {
       .opcode = x_connection.damage_opcode,
-      .extension_opcode = 0,
-      .request_length = 3,
+      .extension_opcode = X_OPCODE_DAMAGE_QUERY_VERSION,
+      .request_len = sizeof(struct x_damage_query_version_request) / 4,
       .version_major = (uint32_t)-1,
       .version_minor = (uint32_t)-1,
   };
@@ -1178,14 +1263,136 @@ error:
   return;
 }
 
+static void print_double_buffer_info(void) {
+  struct x_double_buffer_get_version_request request = {
+      .opcode = x_connection.double_buffer_opcode,
+      .extension_opcode = X_OPCODE_DOUBLE_BUFFER_GET_VERSION,
+      .request_len = sizeof(struct x_double_buffer_get_version_request) / 4,
+      .version_major = (uint8_t)-1,
+      .version_minor = (uint8_t)-1,
+  };
+  struct x_damage_query_version_reply reply = {};
+
+  ssize_t num_written = write_n(x_connection.fd, &request, sizeof(request));
+  if (num_written != sizeof(request))
+    goto error;
+  ssize_t num_read = read_n(x_connection.fd, &reply, sizeof(reply));
+  if (num_read != sizeof(reply) || reply.status != X_REPLY)
+    goto error;
+
+  printf("  " X_EXTENSION_NAME_DOUBLE_BUFFER ":\n");
+#undef LEFT_PAD
+#undef FIELD_WIDTH
+#define LEFT_PAD 4
+#define FIELD_WIDTH 41
+  PRINT_FIELD("Latest supported version", "%u.%u", reply.version_major,
+              reply.version_minor);
+
+  return;
+error:
+  fprintf(stderr, "ERROR: Failed to get " X_EXTENSION_NAME_DOUBLE_BUFFER
+                  " extension information\n");
+  return;
+}
+
+static void print_dpms_info(void) {
+  struct x_dpms_get_version_request request = {
+      .opcode = x_connection.double_buffer_opcode,
+      .extension_opcode = X_OPCODE_DPMS_GET_VERSION,
+      .request_len = sizeof(struct x_dpms_get_version_request) / 4,
+      .version_major = (uint16_t)-1,
+      .version_minor = (uint16_t)-1,
+  };
+  struct x_dpms_get_version_reply reply = {};
+
+  ssize_t num_written = write_n(x_connection.fd, &request, sizeof(request));
+  if (num_written != sizeof(request))
+    goto error;
+  ssize_t num_read = read_n(x_connection.fd, &reply, sizeof(reply));
+  if (num_read != sizeof(reply) || reply.status != X_REPLY)
+    goto error;
+
+  printf("  " X_EXTENSION_NAME_DPMS " (Display Power Management Signaling):\n");
+#undef LEFT_PAD
+#undef FIELD_WIDTH
+#define LEFT_PAD 4
+#define FIELD_WIDTH 41
+  PRINT_FIELD("Latest supported version", "%u.%u", reply.version_major,
+              reply.version_minor);
+
+  /* Check whether the current graphics card/monitor combination is capable of
+   * using DPMS */
+  struct x_dpms_capable_request dpms_capable_request = {
+      .opcode = x_connection.dpms_opcode,
+      .extension_opcode = X_OPCODE_DPMS_CAPABLE,
+      .request_len = sizeof(struct x_dpms_capable_request) / 4,
+  };
+  struct x_dpms_capable_reply dpms_capable_reply = {};
+  num_written = write_n(x_connection.fd, &dpms_capable_request,
+                        sizeof(dpms_capable_request));
+  if (num_written != sizeof(dpms_capable_request))
+    goto error;
+  num_read =
+      read_n(x_connection.fd, &dpms_capable_reply, sizeof(dpms_capable_reply));
+  if (num_read != sizeof(dpms_capable_reply))
+    goto error;
+  else if (dpms_capable_reply.status == X_REPLY) {
+    PRINT_FIELD("DPMS capable", "%s",
+                bool_to_string(dpms_capable_reply.capable));
+  }
+
+  /* Retrieve DPMS timeout information */
+  struct x_dpms_get_timeouts_request dpms_get_timeouts_request = {
+      .opcode = x_connection.dpms_opcode,
+      .extension_opcode = X_OPCODE_DPMS_GET_TIMEOUTS,
+      .request_len = sizeof(struct x_dpms_get_timeouts_request) / 4,
+  };
+  struct x_dpms_get_timeouts_reply dpms_get_timeouts_reply = {};
+  num_written = write_n(x_connection.fd, &dpms_get_timeouts_request,
+                        sizeof(dpms_get_timeouts_request));
+  if (num_written != sizeof(dpms_get_timeouts_request))
+    goto error;
+  num_read = read_n(x_connection.fd, &dpms_get_timeouts_reply,
+                    sizeof(dpms_get_timeouts_reply));
+  if (num_read != sizeof(dpms_get_timeouts_reply))
+    goto error;
+  else if (dpms_get_timeouts_reply.status == X_REPLY) {
+    if (dpms_get_timeouts_reply.standby_timeout)
+      PRINT_FIELD("Standby timeout", "%u seconds",
+                  dpms_get_timeouts_reply.standby_timeout);
+    else
+      PRINT_FIELD("Standby mode", "%s", "disabled");
+    if (dpms_get_timeouts_reply.suspend_timeout)
+      PRINT_FIELD("Suspend timeout", "%u seconds",
+                  dpms_get_timeouts_reply.suspend_timeout);
+    else
+      PRINT_FIELD("Suspend screen", "%s", "disabled");
+    if (dpms_get_timeouts_reply.off_timeout)
+      PRINT_FIELD("Power-off timeout", "%u seconds",
+                  dpms_get_timeouts_reply.off_timeout);
+    else
+      PRINT_FIELD("Power-off screen", "%s", "disabled");
+  }
+
+  return;
+error:
+  fprintf(stderr, "ERROR: Failed to get " X_EXTENSION_NAME_DPMS
+                  " extension information\n");
+  return;
+}
+
 static void print_x_extensions_info(void) {
   printf("\nExtensions information:\n");
   if (x_connection.big_requests_opcode)
     print_big_requests_info();
   if (x_connection.composite_opcode)
     print_composite_info();
-  if(x_connection.damage_opcode)
+  if (x_connection.damage_opcode)
     print_damage_info();
+  if (x_connection.double_buffer_opcode)
+    print_double_buffer_info();
+  if (x_connection.dpms_opcode)
+    print_dpms_info();
 }
 
 int main() {
