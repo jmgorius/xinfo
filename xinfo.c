@@ -109,35 +109,6 @@ static ssize_t write_n(int fd, const void *buffer, size_t n) {
 #define X_OPCODE_QUERY_EXTENSION 98
 #define X_OPCODE_LIST_EXTENSIONS 99
 
-#define X_OPCODE_BIG_REQUESTS_ENABLE 0
-#define X_OPCODE_COMPOSITE_QUERY_VERSION 0
-#define X_OPCODE_DAMAGE_QUERY_VERSION 0
-#define X_OPCODE_DOUBLE_BUFFER_GET_VERSION 0
-#define X_OPCODE_DPMS_GET_VERSION 0
-#define X_OPCODE_DRI2_QUERY_VERSION 0
-#define X_OPCODE_DRI3_QUERY_VERSION 0
-#define X_OPCODE_GLX_QUERY_VERSION 7
-#define X_OPCODE_GENERIC_EVENT_EXTENSION_QUERY_VERSION 0
-#define X_OPCODE_MIT_SCREEN_SAVER_QUERY_VERSION 0
-#define X_OPCODE_MIT_SHM_QUERY_VERSION 0
-#define X_OPCODE_PRESENT_QUERY_VERSION 0
-#define X_OPCODE_RANDR_QUERY_VERSION 0
-#define X_OPCODE_RECORD_QUERY_VERSION 0
-#define X_OPCODE_RENDER_QUERY_VERSION 0
-#define X_OPCODE_SECURITY_QUERY_VERSION 0
-#define X_OPCODE_SHAPE_QUERY_VERSION 0
-#define X_OPCODE_SYNC_INITIALIZE 0
-#define X_OPCODE_X_RESOURCE_QUERY_VERSION 0
-#define X_OPCODE_XC_MISC_QUERY_VERSION 0
-#define X_OPCODE_XFIXES_QUERY_VERSION 0
-#define X_OPCODE_XFREE86_DGA_QUERY_VERSION 0
-#define X_OPCODE_XFREE86_VID_MODE_EXTENSION_QUERY_VERSION 0
-#define X_OPCODE_XINERAMA_QUERY_VERSION 0
-#define X_OPCODE_XINPUT_EXTENSION_QUERY_VERSION 47
-#define X_OPCODE_XKEYBOARD_QUERY_VERSION 0
-#define X_OPCODE_XTEST_QUERY_VERSION 0
-#define X_OPCODE_XVIDEO_QUERY_VERSION 0
-
 struct x_setup_request {
   uint8_t byte_order; /* Either 'B' for big endian, or 'l' for little endian */
   uint8_t pad1;
@@ -290,110 +261,6 @@ struct x_query_extension_reply {
   uint8_t major_opcode;
   uint8_t first_event;
   uint8_t first_error;
-  uint8_t pad[20];
-};
-
-struct x_big_requests_enable_request {
-  uint8_t opcode;
-  uint8_t extension_opcode;
-  uint16_t request_len;
-};
-
-struct x_big_requests_enable_reply {
-  uint8_t status;
-  uint8_t pad1;
-  uint16_t sequence_number;
-  uint32_t additional_data_len;
-  uint32_t max_request_len;
-  uint8_t pad[18];
-};
-
-struct x_xtest_query_version_request {
-  uint8_t opcode;
-  uint8_t extension_opcode;
-  uint16_t request_len;
-  uint8_t version_major;
-  uint8_t pad;
-  uint16_t version_minor;
-};
-
-struct x_xtest_query_version_reply {
-  uint8_t status;
-  uint8_t version_major;
-  uint16_t sequence_number;
-  uint32_t additional_data_len;
-  uint16_t version_minor;
-  uint8_t pad[22];
-};
-
-struct x_generic_query_version8_request {
-  uint8_t opcode;
-  uint8_t extension_opcode;
-  uint16_t request_len;
-  uint8_t version_major;
-  uint8_t version_minor;
-  uint16_t pad;
-};
-
-struct x_generic_query_version8_reply {
-  uint8_t status;
-  uint8_t pad1;
-  uint16_t sequence_number;
-  uint32_t additional_data_len;
-  uint8_t version_major;
-  uint8_t version_minor;
-  uint8_t pad[22];
-};
-
-struct x_generic_query_version16_request {
-  uint8_t opcode;
-  uint8_t extension_opcode;
-  uint16_t request_len;
-  uint16_t version_major;
-  uint16_t version_minor;
-};
-
-struct x_generic_query_version16_reply {
-  uint8_t status;
-  uint8_t pad1;
-  uint16_t sequence_number;
-  uint32_t additional_data_len;
-  uint16_t version_major;
-  uint16_t version_minor;
-  uint8_t pad[20];
-};
-
-struct x_generic_query_version32_request {
-  uint8_t opcode;
-  uint8_t extension_opcode;
-  uint16_t request_len;
-  uint32_t version_major;
-  uint32_t version_minor;
-};
-
-struct x_generic_query_version32_reply {
-  uint8_t status;
-  uint8_t pad1;
-  uint16_t sequence_number;
-  uint32_t additional_data_len;
-  uint32_t version_major;
-  uint32_t version_minor;
-  uint8_t pad[16];
-};
-
-struct x_generic_query_version16_noparam_request {
-  uint8_t opcode;
-  uint8_t extension_opcode;
-  uint16_t request_len;
-};
-
-struct x_generic_query_version16_noparam_reply {
-  uint8_t status;
-  uint8_t pad1;
-  uint16_t sequence_number;
-  uint32_t additional_data_len;
-  uint16_t version_major;
-  uint16_t version_minor;
   uint8_t pad[20];
 };
 
@@ -829,6 +696,126 @@ end:
   return opcode;
 }
 
+struct x_big_requests_enable_request {
+  uint8_t opcode;
+  uint8_t extension_opcode;
+  uint16_t request_len;
+};
+
+struct x_big_requests_enable_reply {
+  uint8_t status;
+  uint8_t pad1;
+  uint16_t sequence_number;
+  uint32_t additional_data_len;
+  uint32_t max_request_len;
+  uint8_t pad[18];
+};
+
+struct x_xtest_query_version_request {
+  uint8_t opcode;
+  uint8_t extension_opcode;
+  uint16_t request_len;
+  uint8_t version_major;
+  uint8_t pad;
+  uint16_t version_minor;
+};
+
+struct x_xtest_query_version_reply {
+  uint8_t status;
+  uint8_t version_major;
+  uint16_t sequence_number;
+  uint32_t additional_data_len;
+  uint16_t version_minor;
+  uint8_t pad[22];
+};
+
+struct x_generic_query_version8_request {
+  uint8_t opcode;
+  uint8_t extension_opcode;
+  uint16_t request_len;
+  uint8_t version_major;
+  uint8_t version_minor;
+  uint16_t pad;
+};
+
+struct x_generic_query_version8_reply {
+  uint8_t status;
+  uint8_t pad1;
+  uint16_t sequence_number;
+  uint32_t additional_data_len;
+  uint8_t version_major;
+  uint8_t version_minor;
+  uint8_t pad[22];
+};
+
+struct x_generic_query_version16_request {
+  uint8_t opcode;
+  uint8_t extension_opcode;
+  uint16_t request_len;
+  uint16_t version_major;
+  uint16_t version_minor;
+};
+
+struct x_generic_query_version16_reply {
+  uint8_t status;
+  uint8_t pad1;
+  uint16_t sequence_number;
+  uint32_t additional_data_len;
+  uint16_t version_major;
+  uint16_t version_minor;
+  uint8_t pad[20];
+};
+
+struct x_generic_query_version32_request {
+  uint8_t opcode;
+  uint8_t extension_opcode;
+  uint16_t request_len;
+  uint32_t version_major;
+  uint32_t version_minor;
+};
+
+struct x_generic_query_version32_reply {
+  uint8_t status;
+  uint8_t pad1;
+  uint16_t sequence_number;
+  uint32_t additional_data_len;
+  uint32_t version_major;
+  uint32_t version_minor;
+  uint8_t pad[16];
+};
+
+struct x_generic_query_version16_noparam_request {
+  uint8_t opcode;
+  uint8_t extension_opcode;
+  uint16_t request_len;
+};
+
+struct x_generic_query_version16_noparam_reply {
+  uint8_t status;
+  uint8_t pad1;
+  uint16_t sequence_number;
+  uint32_t additional_data_len;
+  uint16_t version_major;
+  uint16_t version_minor;
+  uint8_t pad[20];
+};
+
+struct x_generic_query_version32_noparam_request {
+  uint8_t opcode;
+  uint8_t extension_opcode;
+  uint16_t request_len;
+};
+
+struct x_generic_query_version32_noparam_reply {
+  uint8_t status;
+  uint8_t pad1;
+  uint16_t sequence_number;
+  uint32_t additional_data_len;
+  uint32_t version_major;
+  uint32_t version_minor;
+  uint8_t pad[16];
+};
+
 static int generic_query_version8(unsigned int opcode,
                                   unsigned int extension_opcode,
                                   unsigned int *version_major,
@@ -928,6 +915,30 @@ static int generic_query_version16_noparam(unsigned int opcode,
   return 0;
 }
 
+static int generic_query_version32_noparam(unsigned int opcode,
+                                           unsigned int extension_opcode,
+                                           unsigned int *major,
+                                           unsigned int *minor) {
+  struct x_generic_query_version32_noparam_request request = {
+      .opcode = opcode,
+      .extension_opcode = extension_opcode,
+      .request_len =
+          sizeof(struct x_generic_query_version32_noparam_request) / 4,
+  };
+  struct x_generic_query_version32_noparam_reply reply = {0};
+
+  ssize_t num_written = write_n(x_connection.fd, &request, sizeof(request));
+  if (num_written != sizeof(request))
+    return 1;
+  ssize_t num_read = read_n(x_connection.fd, &reply, sizeof(reply));
+  if (num_read != sizeof(reply) || reply.status != X_REPLY)
+    return 1;
+
+  *major = reply.version_major;
+  *minor = reply.version_minor;
+  return 0;
+}
+
 #define X_EXTENSION_NAME_BIG_REQUESTS "BIG-REQUESTS"
 #define X_EXTENSION_NAME_COMPOSITE "Composite"
 #define X_EXTENSION_NAME_DAMAGE "DAMAGE"
@@ -935,6 +946,8 @@ static int generic_query_version16_noparam(unsigned int opcode,
 #define X_EXTENSION_NAME_DPMS "DPMS"
 #define X_EXTENSION_NAME_DRI2 "DRI2"
 #define X_EXTENSION_NAME_DRI3 "DRI3"
+#define X_EXTENSION_NAME_EXTENDED_VISUAL_INFORMATION                           \
+  "Extended-Visual-Information"
 #define X_EXTENSION_NAME_GLX "GLX"
 #define X_EXTENSION_NAME_GENERIC_EVENT_EXTENSION "Generic Event Extension"
 #define X_EXTENSION_NAME_MIT_SCREEN_SAVER "MIT-SCREEN-SAVER"
@@ -956,6 +969,38 @@ static int generic_query_version16_noparam(unsigned int opcode,
 #define X_EXTENSION_NAME_XKEYBOARD "XKEYBOARD"
 #define X_EXTENSION_NAME_XTEST "XTEST"
 #define X_EXTENSION_NAME_XVIDEO "XVideo"
+#define X_EXTENSION_NAME_XVIDEO_MOTION_COMPENSATION "XVideo-MotionCompensation"
+
+#define X_OPCODE_BIG_REQUESTS_ENABLE 0
+#define X_OPCODE_COMPOSITE_QUERY_VERSION 0
+#define X_OPCODE_DAMAGE_QUERY_VERSION 0
+#define X_OPCODE_DOUBLE_BUFFER_GET_VERSION 0
+#define X_OPCODE_DPMS_GET_VERSION 0
+#define X_OPCODE_DRI2_QUERY_VERSION 0
+#define X_OPCODE_DRI3_QUERY_VERSION 0
+#define X_OPCODE_EXTENDED_VISUAL_INFORMATION_QUERY_VERSION 0
+#define X_OPCODE_GLX_QUERY_VERSION 7
+#define X_OPCODE_GENERIC_EVENT_EXTENSION_QUERY_VERSION 0
+#define X_OPCODE_MIT_SCREEN_SAVER_QUERY_VERSION 0
+#define X_OPCODE_MIT_SHM_QUERY_VERSION 0
+#define X_OPCODE_PRESENT_QUERY_VERSION 0
+#define X_OPCODE_RANDR_QUERY_VERSION 0
+#define X_OPCODE_RECORD_QUERY_VERSION 0
+#define X_OPCODE_RENDER_QUERY_VERSION 0
+#define X_OPCODE_SECURITY_QUERY_VERSION 0
+#define X_OPCODE_SHAPE_QUERY_VERSION 0
+#define X_OPCODE_SYNC_INITIALIZE 0
+#define X_OPCODE_X_RESOURCE_QUERY_VERSION 0
+#define X_OPCODE_XC_MISC_QUERY_VERSION 0
+#define X_OPCODE_XFIXES_QUERY_VERSION 0
+#define X_OPCODE_XFREE86_DGA_QUERY_VERSION 0
+#define X_OPCODE_XFREE86_VID_MODE_EXTENSION_QUERY_VERSION 0
+#define X_OPCODE_XINERAMA_QUERY_VERSION 0
+#define X_OPCODE_XINPUT_EXTENSION_QUERY_VERSION 47
+#define X_OPCODE_XKEYBOARD_QUERY_VERSION 0
+#define X_OPCODE_XTEST_QUERY_VERSION 0
+#define X_OPCODE_XVIDEO_QUERY_VERSION 0
+#define X_OPCODE_XVIDEO_MOTION_COMPENSATION_QUERY_VERSION 0
 
 static int x_big_request_query_version(unsigned int opcode, unsigned int *major,
                                        unsigned int *minor) {
@@ -1000,6 +1045,13 @@ static int x_dri3_query_version(unsigned int opcode, unsigned int *major,
                                 unsigned int *minor) {
   return generic_query_version32(opcode, X_OPCODE_DRI3_QUERY_VERSION, major,
                                  minor) != 0;
+}
+
+static int x_extended_visual_information_query_version(unsigned int opcode,
+                                                       unsigned int *major,
+                                                       unsigned int *minor) {
+  return generic_query_version16_noparam(opcode, X_OPCODE_DRI3_QUERY_VERSION,
+                                         major, minor) != 0;
 }
 
 static int x_glx_query_version(unsigned int opcode, unsigned int *major,
@@ -1152,6 +1204,14 @@ static int x_xvideo_query_version(unsigned int opcode, unsigned int *major,
                                          major, minor) != 0;
 }
 
+static int x_xvideo_motion_compensation_query_version(unsigned int opcode,
+                                                      unsigned int *major,
+                                                      unsigned int *minor) {
+  return generic_query_version32_noparam(
+             opcode, X_OPCODE_XVIDEO_MOTION_COMPENSATION_QUERY_VERSION, major,
+             minor) != 0;
+}
+
 struct x_extension_info {
   const char *name;
   int (*query_version_func)(unsigned int opcode, unsigned int *major,
@@ -1170,6 +1230,8 @@ static struct x_extension_info x_extensions[] = {
     {.name = X_EXTENSION_NAME_DPMS, .query_version_func = x_dpms_query_version},
     {.name = X_EXTENSION_NAME_DRI2, .query_version_func = x_dri2_query_version},
     {.name = X_EXTENSION_NAME_DRI3, .query_version_func = x_dri3_query_version},
+    {.name = X_EXTENSION_NAME_EXTENDED_VISUAL_INFORMATION,
+     .query_version_func = x_extended_visual_information_query_version},
     {.name = X_EXTENSION_NAME_GLX, .query_version_func = x_glx_query_version},
     {.name = X_EXTENSION_NAME_GENERIC_EVENT_EXTENSION,
      .query_version_func = x_generic_event_extension_query_version},
@@ -1210,7 +1272,8 @@ static struct x_extension_info x_extensions[] = {
      .query_version_func = x_xtest_query_version},
     {.name = X_EXTENSION_NAME_XVIDEO,
      .query_version_func = x_xvideo_query_version},
-};
+    {.name = X_EXTENSION_NAME_XVIDEO_MOTION_COMPENSATION,
+     .query_version_func = x_xvideo_motion_compensation_query_version}};
 
 static int x_get_extension_version(const char *name, unsigned int opcode,
                                    unsigned int *major, unsigned *minor) {
