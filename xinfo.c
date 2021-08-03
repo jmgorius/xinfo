@@ -111,6 +111,14 @@ static ssize_t write_n(int fd, const void *buffer, size_t n) {
 #define X_EXTENSION_NAME_DRI2 "DRI2"
 #define X_EXTENSION_NAME_DRI3 "DRI3"
 #define X_EXTENSION_NAME_GLX "GLX"
+#define X_EXTENSION_NAME_GENERIC_EVENT_EXTENSION "Generic Event Extension"
+#define X_EXTENSION_NAME_MIT_SCREEN_SAVER "MIT-SCREEN-SAVER"
+#define X_EXTENSION_NAME_MIT_SHM "MIT-SHM"
+#define X_EXTENSION_NAME_PRESENT "Present"
+#define X_EXTENSION_NAME_RANDR "RANDR"
+#define X_EXTENSION_NAME_RECORD "RECORD"
+#define X_EXTENSION_NAME_RENDER "RENDER"
+#define X_EXTENSION_NAME_SECURITY "SECURITY"
 
 #define X_OPCODE_BIG_REQUESTS_ENABLE 0
 #define X_OPCODE_COMPOSITE_QUERY_VERSION 0
@@ -122,6 +130,14 @@ static ssize_t write_n(int fd, const void *buffer, size_t n) {
 #define X_OPCODE_DRI2_QUERY_VERSION 0
 #define X_OPCODE_DRI3_QUERY_VERSION 0
 #define X_OPCODE_GLX_QUERY_VERSION 7
+#define X_OPCODE_GENERIC_EVENT_EXTENSION_QUERY_VERSION 0
+#define X_OPCODE_MIT_SCREEN_SAVER_QUERY_VERSION 0
+#define X_OPCODE_MIT_SHM_QUERY_VERSION 0
+#define X_OPCODE_PRESENT_QUERY_VERSION 0
+#define X_OPCODE_RANDR_QUERY_VERSION 0
+#define X_OPCODE_RECORD_QUERY_VERSION 0
+#define X_OPCODE_RENDER_QUERY_VERSION 0
+#define X_OPCODE_SECURITY_QUERY_VERSION 0
 
 struct x_setup_request {
   uint8_t byte_order; /* Either 'B' for big endian, or 'l' for little endian */
@@ -233,6 +249,14 @@ static struct {
   unsigned int dri2_opcode;
   unsigned int dri3_opcode;
   unsigned int glx_opcode;
+  unsigned int generic_event_extension_opcode;
+  unsigned int mit_screen_saver_opcode;
+  unsigned int mit_shm_opcode;
+  unsigned int present_opcode;
+  unsigned int randr_opcode;
+  unsigned int record_opcode;
+  unsigned int render_opcode;
+  unsigned int security_opcode;
 } x_connection = {
     .fd = -1,
 };
@@ -301,43 +325,6 @@ struct x_big_requests_enable_reply {
   uint8_t pad[18];
 };
 
-struct x_double_buffer_get_version_request {
-  uint8_t opcode;
-  uint8_t extension_opcode;
-  uint16_t request_len;
-  uint8_t version_major;
-  uint8_t version_minor;
-  uint16_t pad;
-};
-
-struct x_double_buffer_get_version_reply {
-  uint8_t status;
-  uint8_t pad1;
-  uint16_t sequence_number;
-  uint32_t additional_data_len;
-  uint8_t version_major;
-  uint8_t version_minor;
-  uint8_t pad[22];
-};
-
-struct x_dpms_get_version_request {
-  uint8_t opcode;
-  uint8_t extension_opcode;
-  uint16_t request_len;
-  uint16_t version_major;
-  uint16_t version_minor;
-};
-
-struct x_dpms_get_version_reply {
-  uint8_t status;
-  uint8_t pad1;
-  uint16_t sequence_number;
-  uint32_t additional_data_len;
-  uint16_t version_major;
-  uint16_t version_minor;
-  uint8_t pad[20];
-};
-
 struct x_dpms_capable_request {
   uint8_t opcode;
   uint8_t extension_opcode;
@@ -368,6 +355,62 @@ struct x_dpms_get_timeouts_reply {
   uint16_t suspend_timeout;
   uint16_t off_timeout;
   uint8_t pad[18];
+};
+
+struct x_mit_shm_query_version_request {
+  uint8_t opcode;
+  uint8_t extension_opcode;
+  uint16_t request_len;
+};
+
+struct x_mit_shm_query_version_reply {
+  uint8_t status;
+  uint8_t pad1;
+  uint16_t sequence_number;
+  uint32_t additional_data_len;
+  uint16_t version_major;
+  uint16_t version_minor;
+  uint16_t uid;
+  uint16_t gid;
+  uint8_t pixmap_format;
+  uint8_t pad[15];
+};
+
+struct x_generic_query_version8_request {
+  uint8_t opcode;
+  uint8_t extension_opcode;
+  uint16_t request_len;
+  uint8_t version_major;
+  uint8_t version_minor;
+  uint16_t pad;
+};
+
+struct x_generic_query_version8_reply {
+  uint8_t status;
+  uint8_t pad1;
+  uint16_t sequence_number;
+  uint32_t additional_data_len;
+  uint8_t version_major;
+  uint8_t version_minor;
+  uint8_t pad[22];
+};
+
+struct x_generic_query_version16_request {
+  uint8_t opcode;
+  uint8_t extension_opcode;
+  uint16_t request_len;
+  uint16_t version_major;
+  uint16_t version_minor;
+};
+
+struct x_generic_query_version16_reply {
+  uint8_t status;
+  uint8_t pad1;
+  uint16_t sequence_number;
+  uint32_t additional_data_len;
+  uint16_t version_major;
+  uint16_t version_minor;
+  uint8_t pad[20];
 };
 
 struct x_generic_query_version32_request {
@@ -840,6 +883,22 @@ static unsigned int enable_extension(const char *name) {
     x_connection.dri3_opcode = opcode;
   else if (strcmp(name, X_EXTENSION_NAME_GLX) == 0)
     x_connection.glx_opcode = opcode;
+  else if (strcmp(name, X_EXTENSION_NAME_GENERIC_EVENT_EXTENSION) == 0)
+    x_connection.generic_event_extension_opcode = opcode;
+  else if (strcmp(name, X_EXTENSION_NAME_MIT_SCREEN_SAVER) == 0)
+    x_connection.mit_screen_saver_opcode = opcode;
+  else if (strcmp(name, X_EXTENSION_NAME_MIT_SHM) == 0)
+    x_connection.mit_shm_opcode = opcode;
+  else if (strcmp(name, X_EXTENSION_NAME_PRESENT) == 0)
+    x_connection.present_opcode = opcode;
+  else if (strcmp(name, X_EXTENSION_NAME_RANDR) == 0)
+    x_connection.randr_opcode = opcode;
+  else if (strcmp(name, X_EXTENSION_NAME_RECORD) == 0)
+    x_connection.record_opcode = opcode;
+  else if (strcmp(name, X_EXTENSION_NAME_RENDER) == 0)
+    x_connection.render_opcode = opcode;
+  else if (strcmp(name, X_EXTENSION_NAME_SECURITY) == 0)
+    x_connection.security_opcode = opcode;
   return opcode;
 }
 
@@ -1166,6 +1225,56 @@ extensions_error:
   fprintf(stderr, "ERROR: Failed to query supported X extensions");
 }
 
+static int generic_query_version8(unsigned int opcode,
+                                  unsigned int extension_opcode,
+                                  uint8_t *version_major,
+                                  uint8_t *version_minor) {
+  struct x_generic_query_version8_request request = {
+      .opcode = opcode,
+      .extension_opcode = extension_opcode,
+      .request_len = sizeof(struct x_generic_query_version8_request) / 4,
+      .version_major = (uint8_t)-1,
+      .version_minor = (uint8_t)-1,
+  };
+  struct x_generic_query_version8_reply reply = {};
+
+  ssize_t num_written = write_n(x_connection.fd, &request, sizeof(request));
+  if (num_written != sizeof(request))
+    return 1;
+  ssize_t num_read = read_n(x_connection.fd, &reply, sizeof(reply));
+  if (num_read != sizeof(reply) || reply.status != X_REPLY)
+    return 1;
+  *version_major = reply.version_major;
+  *version_minor = reply.version_minor;
+
+  return 0;
+}
+
+static int generic_query_version16(unsigned int opcode,
+                                   unsigned int extension_opcode,
+                                   uint16_t *version_major,
+                                   uint16_t *version_minor) {
+  struct x_generic_query_version16_request request = {
+      .opcode = opcode,
+      .extension_opcode = extension_opcode,
+      .request_len = sizeof(struct x_generic_query_version16_request) / 4,
+      .version_major = (uint16_t)-1,
+      .version_minor = (uint16_t)-1,
+  };
+  struct x_generic_query_version16_reply reply = {};
+
+  ssize_t num_written = write_n(x_connection.fd, &request, sizeof(request));
+  if (num_written != sizeof(request))
+    return 1;
+  ssize_t num_read = read_n(x_connection.fd, &reply, sizeof(reply));
+  if (num_read != sizeof(reply) || reply.status != X_REPLY)
+    return 1;
+  *version_major = reply.version_major;
+  *version_minor = reply.version_minor;
+
+  return 0;
+}
+
 static int generic_query_version32(unsigned int opcode,
                                    unsigned int extension_opcode,
                                    uint32_t *version_major,
@@ -1231,10 +1340,6 @@ static void print_composite_info(void) {
     goto error;
 
   printf("  " X_EXTENSION_NAME_COMPOSITE ":\n");
-#undef LEFT_PAD
-#undef FIELD_WIDTH
-#define LEFT_PAD 4
-#define FIELD_WIDTH 41
   PRINT_FIELD("Latest supported version", "%u.%u", version_major,
               version_minor);
   return;
@@ -1263,26 +1368,16 @@ error:
 }
 
 static void print_double_buffer_info(void) {
-  struct x_double_buffer_get_version_request request = {
-      .opcode = x_connection.double_buffer_opcode,
-      .extension_opcode = X_OPCODE_DOUBLE_BUFFER_GET_VERSION,
-      .request_len = sizeof(struct x_double_buffer_get_version_request) / 4,
-      .version_major = (uint8_t)-1,
-      .version_minor = (uint8_t)-1,
-  };
-  struct x_double_buffer_get_version_reply reply = {};
-
-  ssize_t num_written = write_n(x_connection.fd, &request, sizeof(request));
-  if (num_written != sizeof(request))
-    goto error;
-  ssize_t num_read = read_n(x_connection.fd, &reply, sizeof(reply));
-  if (num_read != sizeof(reply) || reply.status != X_REPLY)
+  uint8_t version_major = 0;
+  uint8_t version_minor = 0;
+  if (generic_query_version8(x_connection.double_buffer_opcode,
+                             X_OPCODE_DOUBLE_BUFFER_GET_VERSION, &version_major,
+                             &version_minor) != 0)
     goto error;
 
   printf("  " X_EXTENSION_NAME_DOUBLE_BUFFER ":\n");
-  PRINT_FIELD("Latest supported version", "%u.%u", reply.version_major,
-              reply.version_minor);
-
+  PRINT_FIELD("Latest supported version", "%u.%u", version_major,
+              version_minor);
   return;
 error:
   fprintf(stderr, "ERROR: Failed to get " X_EXTENSION_NAME_DOUBLE_BUFFER
@@ -1291,25 +1386,16 @@ error:
 }
 
 static void print_dpms_info(void) {
-  struct x_dpms_get_version_request request = {
-      .opcode = x_connection.double_buffer_opcode,
-      .extension_opcode = X_OPCODE_DPMS_GET_VERSION,
-      .request_len = sizeof(struct x_dpms_get_version_request) / 4,
-      .version_major = (uint16_t)-1,
-      .version_minor = (uint16_t)-1,
-  };
-  struct x_dpms_get_version_reply reply = {};
-
-  ssize_t num_written = write_n(x_connection.fd, &request, sizeof(request));
-  if (num_written != sizeof(request))
-    goto error;
-  ssize_t num_read = read_n(x_connection.fd, &reply, sizeof(reply));
-  if (num_read != sizeof(reply) || reply.status != X_REPLY)
+  uint16_t version_major = 0;
+  uint16_t version_minor = 0;
+  if (generic_query_version16(x_connection.dpms_opcode,
+                              X_OPCODE_DPMS_GET_VERSION, &version_major,
+                              &version_minor) != 0)
     goto error;
 
   printf("  " X_EXTENSION_NAME_DPMS " (Display Power Management Signaling):\n");
-  PRINT_FIELD("Latest supported version", "%u.%u", reply.version_major,
-              reply.version_minor);
+  PRINT_FIELD("Latest supported version", "%u.%u", version_major,
+              version_minor);
 
   /* Check whether the current graphics card/monitor combination is capable of
    * using DPMS */
@@ -1319,11 +1405,11 @@ static void print_dpms_info(void) {
       .request_len = sizeof(struct x_dpms_capable_request) / 4,
   };
   struct x_dpms_capable_reply dpms_capable_reply = {};
-  num_written = write_n(x_connection.fd, &dpms_capable_request,
-                        sizeof(dpms_capable_request));
+  ssize_t num_written = write_n(x_connection.fd, &dpms_capable_request,
+                                sizeof(dpms_capable_request));
   if (num_written != sizeof(dpms_capable_request))
     goto error;
-  num_read =
+  ssize_t num_read =
       read_n(x_connection.fd, &dpms_capable_reply, sizeof(dpms_capable_reply));
   if (num_read != sizeof(dpms_capable_reply))
     goto error;
@@ -1417,15 +1503,166 @@ static void print_glx_info(void) {
     goto error;
 
   printf("  " X_EXTENSION_NAME_GLX ":\n");
-#undef LEFT_PAD
-#undef FIELD_WIDTH
-#define LEFT_PAD 4
-#define FIELD_WIDTH 41
   PRINT_FIELD("Latest supported version", "%u.%u", version_major,
               version_minor);
   return;
 error:
   fprintf(stderr, "ERROR: Failed to get " X_EXTENSION_NAME_GLX
+                  " extension information\n");
+  return;
+}
+
+static void print_generic_event_extension_info(void) {
+  uint16_t version_major = 0;
+  uint16_t version_minor = 0;
+  if (generic_query_version16(x_connection.generic_event_extension_opcode,
+                              X_OPCODE_GENERIC_EVENT_EXTENSION_QUERY_VERSION,
+                              &version_major, &version_minor) != 0)
+    goto error;
+
+  printf("  " X_EXTENSION_NAME_GENERIC_EVENT_EXTENSION ":\n");
+  PRINT_FIELD("Latest supported version", "%u.%u", version_major,
+              version_minor);
+  return;
+error:
+  fprintf(stderr,
+          "ERROR: Failed to get " X_EXTENSION_NAME_GENERIC_EVENT_EXTENSION
+          " extension information\n");
+  return;
+}
+
+static void print_mit_screen_saver_info(void) {
+  uint8_t version_major = 0;
+  uint8_t version_minor = 0;
+  if (generic_query_version8(x_connection.mit_screen_saver_opcode,
+                             X_OPCODE_MIT_SCREEN_SAVER_QUERY_VERSION,
+                             &version_major, &version_minor) != 0)
+    goto error;
+
+  printf("  " X_EXTENSION_NAME_MIT_SCREEN_SAVER ":\n");
+  PRINT_FIELD("Latest supported version", "%u.%u", version_major,
+              version_minor);
+  return;
+error:
+  fprintf(stderr, "ERROR: Failed to get " X_EXTENSION_NAME_MIT_SCREEN_SAVER
+                  " extension information\n");
+  return;
+}
+
+static void print_mit_shm_info(void) {
+  struct x_mit_shm_query_version_request request = {
+      .opcode = x_connection.mit_shm_opcode,
+      .extension_opcode = X_OPCODE_MIT_SHM_QUERY_VERSION,
+      .request_len = sizeof(struct x_mit_shm_query_version_request) / 4,
+  };
+  struct x_mit_shm_query_version_reply reply = {};
+
+  ssize_t num_written = write_n(x_connection.fd, &request, sizeof(request));
+  if (num_written != sizeof(request))
+    goto error;
+  ssize_t num_read = read_n(x_connection.fd, &reply, sizeof(reply));
+  if (num_read != sizeof(reply) || reply.status != X_REPLY)
+    goto error;
+
+  printf("  " X_EXTENSION_NAME_MIT_SHM " (MIT Shared Memory):\n");
+  PRINT_FIELD("Latest supported version", "%u.%u", reply.version_major,
+              reply.version_minor);
+  PRINT_FIELD("Shared memory pixmaps", "%s",
+              bool_to_string(reply.pixmap_format));
+
+  return;
+error:
+  fprintf(stderr, "ERROR: Failed to get " X_EXTENSION_NAME_MIT_SHM
+                  " extension information\n");
+  return;
+}
+
+static void print_present_info(void) {
+  uint32_t version_major = 0;
+  uint32_t version_minor = 0;
+  if (generic_query_version32(x_connection.present_opcode,
+                              X_OPCODE_PRESENT_QUERY_VERSION, &version_major,
+                              &version_minor) != 0)
+    goto error;
+
+  printf("  " X_EXTENSION_NAME_PRESENT ":\n");
+  PRINT_FIELD("Latest supported version", "%u.%u", version_major,
+              version_minor);
+  return;
+error:
+  fprintf(stderr, "ERROR: Failed to get " X_EXTENSION_NAME_PRESENT
+                  " extension information\n");
+  return;
+}
+
+static void print_randr_info(void) {
+  uint32_t version_major = 0;
+  uint32_t version_minor = 0;
+  if (generic_query_version32(x_connection.randr_opcode,
+                              X_OPCODE_RANDR_QUERY_VERSION, &version_major,
+                              &version_minor) != 0)
+    goto error;
+
+  printf("  " X_EXTENSION_NAME_RANDR ":\n");
+  PRINT_FIELD("Latest supported version", "%u.%u", version_major,
+              version_minor);
+  return;
+error:
+  fprintf(stderr, "ERROR: Failed to get " X_EXTENSION_NAME_RANDR
+                  " extension information\n");
+  return;
+}
+
+static void print_record_info(void) {
+  uint16_t version_major = 0;
+  uint16_t version_minor = 0;
+  if (generic_query_version16(x_connection.record_opcode,
+                              X_OPCODE_RECORD_QUERY_VERSION, &version_major,
+                              &version_minor) != 0)
+    goto error;
+
+  printf("  " X_EXTENSION_NAME_RECORD ":\n");
+  PRINT_FIELD("Latest supported version", "%u.%u", version_major,
+              version_minor);
+  return;
+error:
+  fprintf(stderr, "ERROR: Failed to get " X_EXTENSION_NAME_RECORD
+                  " extension information\n");
+  return;
+}
+
+static void print_render_info(void) {
+  uint32_t version_major = 0;
+  uint32_t version_minor = 0;
+  if (generic_query_version32(x_connection.render_opcode,
+                              X_OPCODE_RENDER_QUERY_VERSION, &version_major,
+                              &version_minor) != 0)
+    goto error;
+
+  printf("  " X_EXTENSION_NAME_RENDER ":\n");
+  PRINT_FIELD("Latest supported version", "%u.%u", version_major,
+              version_minor);
+  return;
+error:
+  fprintf(stderr, "ERROR: Failed to get " X_EXTENSION_NAME_RENDER
+                  " extension information\n");
+  return;
+}
+
+static void print_security_info(void) {
+  uint16_t version_major = 0;
+  uint16_t version_minor = 0;
+  if (generic_query_version16(x_connection.security_opcode,
+                              X_OPCODE_SECURITY_QUERY_VERSION, &version_major,
+                              &version_minor) != 0)
+    goto error;
+
+  printf("  " X_EXTENSION_NAME_SECURITY ":\n");
+  PRINT_FIELD("Latest supported version", "%u.%u", version_major,
+              version_minor);
+  return;
+error:
+  fprintf(stderr, "ERROR: Failed to get " X_EXTENSION_NAME_SECURITY
                   " extension information\n");
   return;
 }
@@ -1448,6 +1685,22 @@ static void print_x_extensions_info(void) {
     print_dri3_info();
   if (x_connection.glx_opcode)
     print_glx_info();
+  if (x_connection.generic_event_extension_opcode)
+    print_generic_event_extension_info();
+  if (x_connection.mit_screen_saver_opcode)
+    print_mit_screen_saver_info();
+  if (x_connection.mit_shm_opcode)
+    print_mit_shm_info();
+  if (x_connection.present_opcode)
+    print_present_info();
+  if (x_connection.randr_opcode)
+    print_randr_info();
+  if (x_connection.record_opcode)
+    print_record_info();
+  if (x_connection.render_opcode)
+    print_render_info();
+  if (x_connection.security_opcode)
+    print_security_info();
 }
 
 int main() {
