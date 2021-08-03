@@ -690,7 +690,7 @@ static void print_x_connection_data(void) {
   PRINT_FIELD("Motion buffer size", "%u",
               x_connection.setup_data.data.motion_buffer_size);
   PRINT_FIELD("Maximum request length", "%u bytes",
-              x_connection.setup_data.data.maximum_request_length);
+              4 * x_connection.setup_data.data.maximum_request_length);
   PRINT_FIELD("Image byte order", "%s", image_byte_order);
   PRINT_FIELD("Bitmap format bit order", "%s first", bitmap_format_bit_order);
   PRINT_FIELD("Bitmap format scanline unit", "%u",
