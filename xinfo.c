@@ -1318,6 +1318,26 @@ static void print_x_connection_data(void) {
   unsigned int release_build =
       x_connection.setup_data.data.release_number % 1000;
 
+  size_t max_request_len = 4 * x_connection.setup_data.data.maximum_request_len;
+  {
+    /* If BIG-REQUESTS is available, then the maximum request length may be
+     * higher than the one provided by the connection setup information */
+    unsigned int big_requests_opcode =
+        x_get_extension_opcode(X_EXTENSION_NAME_BIG_REQUESTS);
+    struct x_big_requests_enable_request request = {
+        .opcode = big_requests_opcode,
+        .extension_opcode = X_OPCODE_BIG_REQUESTS_ENABLE,
+        .request_len = sizeof(struct x_big_requests_enable_request) / 4,
+    };
+    struct x_big_requests_enable_reply reply = {0};
+    ssize_t num_written = write_n(x_connection.fd, &request, sizeof(request));
+    if (num_written == sizeof(request)) {
+      ssize_t num_read = read_n(x_connection.fd, &reply, sizeof(reply));
+      if (num_read == sizeof(reply))
+        max_request_len = 4 * (size_t)reply.max_request_len;
+    }
+  }
+
   PRINT_FIELD("Vendor", "%s", x_connection.setup_data.vendor_name);
   PRINT_FIELD("Version", "%u.%u", x_connection.setup_data.version_major,
               x_connection.setup_data.version_minor);
@@ -1334,8 +1354,7 @@ static void print_x_connection_data(void) {
               x_connection.setup_data.data.resource_id_mask);
   PRINT_FIELD("Motion buffer size", "%u",
               x_connection.setup_data.data.motion_buffer_size);
-  PRINT_FIELD("Maximum request length", "%u bytes",
-              4 * x_connection.setup_data.data.maximum_request_len);
+  PRINT_FIELD("Maximum request length", "%zu bytes", max_request_len);
   PRINT_FIELD("Image byte order", "%s", image_byte_order);
   PRINT_FIELD("Bitmap format bit order", "%s first", bitmap_format_bit_order);
   PRINT_FIELD("Bitmap format scanline unit", "%u",
