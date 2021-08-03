@@ -886,19 +886,26 @@ font_error:
   fprintf(stderr, "ERROR: Failed get X font search paths\n");
 }
 
+static int string_comparator(const void *lhs, const void *rhs) {
+  const char **first = (const char **)lhs;
+  const char **second = (const char **)rhs;
+  return strcmp(*first, *second);
+}
+
 static void print_x_extensions(void) {
   struct x_list_extensions_request request = {
       .opcode = X_OPCODE_LIST_EXTENSIONS,
       .request_length = 1,
   };
+  struct x_list_extensions_reply reply = {};
   char *additional_data = 0;
+  char **extension_names = 0;
 
   /* Request the list of supported extensions from the X server */
   ssize_t num_written = write_n(x_connection.fd, &request, sizeof(request));
   if (num_written != sizeof(request))
     goto extensions_error;
 
-  struct x_list_extensions_reply reply = {};
   ssize_t num_read = read_n(x_connection.fd, &reply, sizeof(reply));
   /* If we fail, don't try to understand why and just return */
   if (num_read != sizeof(reply) || reply.status != X_REPLY)
@@ -912,23 +919,39 @@ static void print_x_extensions(void) {
   if (num_read != (ssize_t)additional_data_len)
     goto extensions_error;
 
-  printf("\nSupported extensions: %u\n", reply.num_names);
-  char name[256] = {};
+  extension_names = calloc(reply.num_names, sizeof(char *));
+  if (!extension_names)
+    goto extensions_error;
   const char *curr_data = additional_data;
   for (size_t i = 0; i < reply.num_names; ++i) {
     uint8_t name_len = 0;
     memcpy(&name_len, curr_data, 1);
     curr_data += 1;
-    memcpy(name, curr_data, name_len);
-    name[name_len] = '\0';
+    extension_names[i] = calloc(name_len + 1, 1);
+    if (!extension_names[i])
+      goto extensions_error;
+    memcpy(extension_names[i], curr_data, name_len);
+    extension_names[i][name_len] = '\0';
     curr_data += name_len;
-    printf("  * %s\n", name);
   }
 
+  qsort(extension_names, reply.num_names, sizeof(char *), string_comparator);
+  printf("\nSupported extensions: %u\n", reply.num_names);
+  for (size_t i = 0; i < reply.num_names; ++i)
+    printf("  * %s\n", extension_names[i]);
+
+  for (size_t i = 0; i < reply.num_names; ++i)
+    free(extension_names[i]);
+  free(extension_names);
   free(additional_data);
   return;
 
 extensions_error:
+  if (extension_names) {
+    for (size_t i = 0; i < reply.num_names; ++i)
+      free(extension_names[i]);
+  }
+  free(extension_names);
   free(additional_data);
   fprintf(stderr, "ERROR: Failed to query supported X extensions");
 }
