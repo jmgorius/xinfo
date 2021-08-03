@@ -108,6 +108,8 @@ static ssize_t write_n(int fd, const void *buffer, size_t n) {
 #define X_EXTENSION_NAME_DAMAGE "DAMAGE"
 #define X_EXTENSION_NAME_DOUBLE_BUFFER "DOUBLE-BUFFER"
 #define X_EXTENSION_NAME_DPMS "DPMS"
+#define X_EXTENSION_NAME_DRI2 "DRI2"
+#define X_EXTENSION_NAME_DRI3 "DRI3"
 
 #define X_OPCODE_BIG_REQUESTS_ENABLE 0
 #define X_OPCODE_COMPOSITE_QUERY_VERSION 0
@@ -116,6 +118,8 @@ static ssize_t write_n(int fd, const void *buffer, size_t n) {
 #define X_OPCODE_DPMS_GET_VERSION 0
 #define X_OPCODE_DPMS_CAPABLE 1
 #define X_OPCODE_DPMS_GET_TIMEOUTS 2
+#define X_OPCODE_DRI2_QUERY_VERSION 0
+#define X_OPCODE_DRI3_QUERY_VERSION 0
 
 struct x_setup_request {
   uint8_t byte_order; /* Either 'B' for big endian, or 'l' for little endian */
@@ -224,6 +228,8 @@ static struct {
   unsigned int damage_opcode;
   unsigned int double_buffer_opcode;
   unsigned int dpms_opcode;
+  unsigned int dri2_opcode;
+  unsigned int dri3_opcode;
 } x_connection = {
     .fd = -1,
 };
@@ -307,7 +313,7 @@ struct x_composite_query_version_reply {
   uint32_t additional_data_len;
   uint32_t version_major;
   uint32_t version_minor;
-  uint8_t pad[14];
+  uint8_t pad[16];
 };
 
 struct x_damage_query_version_request {
@@ -325,7 +331,7 @@ struct x_damage_query_version_reply {
   uint32_t additional_data_len;
   uint32_t version_major;
   uint32_t version_minor;
-  uint8_t pad[14];
+  uint8_t pad[16];
 };
 
 struct x_double_buffer_get_version_request {
@@ -395,6 +401,42 @@ struct x_dpms_get_timeouts_reply {
   uint16_t suspend_timeout;
   uint16_t off_timeout;
   uint8_t pad[18];
+};
+
+struct x_dri2_query_version_request {
+  uint8_t opcode;
+  uint8_t extension_opcode;
+  uint16_t request_len;
+  uint32_t version_major;
+  uint32_t version_minor;
+};
+
+struct x_dri2_query_version_reply {
+  uint8_t status;
+  uint8_t pad1;
+  uint16_t sequence_number;
+  uint32_t additional_data_len;
+  uint32_t version_major;
+  uint32_t version_minor;
+  uint8_t pad[16];
+};
+
+struct x_dri3_query_version_request {
+  uint8_t opcode;
+  uint8_t extension_opcode;
+  uint16_t request_len;
+  uint32_t version_major;
+  uint32_t version_minor;
+};
+
+struct x_dri3_query_version_reply {
+  uint8_t status;
+  uint8_t pad1;
+  uint16_t sequence_number;
+  uint32_t additional_data_len;
+  uint32_t version_major;
+  uint32_t version_minor;
+  uint8_t pad[16];
 };
 
 static void x_disconnect(void) {
@@ -843,6 +885,10 @@ static unsigned int enable_extension(const char *name) {
     x_connection.double_buffer_opcode = opcode;
   else if (strcmp(name, X_EXTENSION_NAME_DPMS) == 0)
     x_connection.dpms_opcode = opcode;
+  else if (strcmp(name, X_EXTENSION_NAME_DRI2) == 0)
+    x_connection.dri2_opcode = opcode;
+  else if (strcmp(name, X_EXTENSION_NAME_DRI3) == 0)
+    x_connection.dri3_opcode = opcode;
   return opcode;
 }
 
@@ -1381,6 +1427,70 @@ error:
   return;
 }
 
+static void print_dri2_info(void) {
+  struct x_dri2_query_version_request request = {
+      .opcode = x_connection.dri2_opcode,
+      .extension_opcode = X_OPCODE_DRI2_QUERY_VERSION,
+      .request_len = sizeof(struct x_dri2_query_version_request) / 4,
+      .version_major = (uint32_t)-1,
+      .version_minor = (uint32_t)-1,
+  };
+  struct x_dri2_query_version_reply reply = {};
+
+  ssize_t num_written = write_n(x_connection.fd, &request, sizeof(request));
+  if (num_written != sizeof(request))
+    goto error;
+  ssize_t num_read = read_n(x_connection.fd, &reply, sizeof(reply));
+  if (num_read != sizeof(reply) || reply.status != X_REPLY)
+    goto error;
+
+  printf("  " X_EXTENSION_NAME_DRI2 ":\n");
+#undef LEFT_PAD
+#undef FIELD_WIDTH
+#define LEFT_PAD 4
+#define FIELD_WIDTH 41
+  PRINT_FIELD("Latest supported version", "%u.%u", reply.version_major,
+              reply.version_minor);
+
+  return;
+error:
+  fprintf(stderr, "ERROR: Failed to get " X_EXTENSION_NAME_DRI2
+                  " extension information\n");
+  return;
+}
+
+static void print_dri3_info(void) {
+  struct x_dri3_query_version_request request = {
+      .opcode = x_connection.dri3_opcode,
+      .extension_opcode = X_OPCODE_DRI3_QUERY_VERSION,
+      .request_len = sizeof(struct x_dri3_query_version_request) / 4,
+      .version_major = (uint32_t)-1,
+      .version_minor = (uint32_t)-1,
+  };
+  struct x_dri3_query_version_reply reply = {};
+
+  ssize_t num_written = write_n(x_connection.fd, &request, sizeof(request));
+  if (num_written != sizeof(request))
+    goto error;
+  ssize_t num_read = read_n(x_connection.fd, &reply, sizeof(reply));
+  if (num_read != sizeof(reply) || reply.status != X_REPLY)
+    goto error;
+
+  printf("  " X_EXTENSION_NAME_DRI3 ":\n");
+#undef LEFT_PAD
+#undef FIELD_WIDTH
+#define LEFT_PAD 4
+#define FIELD_WIDTH 41
+  PRINT_FIELD("Latest supported version", "%u.%u", reply.version_major,
+              reply.version_minor);
+
+  return;
+error:
+  fprintf(stderr, "ERROR: Failed to get " X_EXTENSION_NAME_DRI3
+                  " extension information\n");
+  return;
+}
+
 static void print_x_extensions_info(void) {
   printf("\nExtensions information:\n");
   if (x_connection.big_requests_opcode)
@@ -1393,6 +1503,10 @@ static void print_x_extensions_info(void) {
     print_double_buffer_info();
   if (x_connection.dpms_opcode)
     print_dpms_info();
+  if (x_connection.dri2_opcode)
+    print_dri2_info();
+  if (x_connection.dri3_opcode)
+    print_dri3_info();
 }
 
 int main() {
