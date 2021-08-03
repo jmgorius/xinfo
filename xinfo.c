@@ -100,6 +100,7 @@ static ssize_t write_n(int fd, const void *buffer, size_t n) {
 #define X_EVENT_MASK_OWNER_GRAB_BUTTON 0x01000000u
 
 #define X_OPCODE_GET_FONT_PATH 52
+#define X_OPCODE_LIST_EXTENSIONS 99
 
 struct x_setup_request {
   uint8_t byte_order; /* Either 'B' for big endian, or 'l' for little endian */
@@ -220,6 +221,20 @@ struct x_get_font_path_reply {
   uint32_t data_len;
   uint16_t num_strings;
   uint8_t pad[22];
+};
+
+struct x_list_extensions_request {
+  uint8_t opcode;
+  uint8_t pad;
+  uint16_t request_length;
+};
+
+struct x_list_extensions_reply {
+  uint8_t status;
+  uint8_t num_names;
+  uint16_t sequence_number;
+  uint32_t data_len;
+  uint8_t pad[24];
 };
 
 static void x_disconnect(void) {
@@ -871,12 +886,60 @@ font_error:
   fprintf(stderr, "ERROR: Failed get X font search paths\n");
 }
 
+static void print_x_extensions(void) {
+  struct x_list_extensions_request request = {
+      .opcode = X_OPCODE_LIST_EXTENSIONS,
+      .request_length = 1,
+  };
+  char *additional_data = 0;
+
+  /* Request the list of supported extensions from the X server */
+  ssize_t num_written = write_n(x_connection.fd, &request, sizeof(request));
+  if (num_written != sizeof(request))
+    goto extensions_error;
+
+  struct x_list_extensions_reply reply = {};
+  ssize_t num_read = read_n(x_connection.fd, &reply, sizeof(reply));
+  /* If we fail, don't try to understand why and just return */
+  if (num_read != sizeof(reply) || reply.status != X_REPLY)
+    goto extensions_error;
+
+  size_t additional_data_len = 4 * reply.data_len;
+  additional_data = malloc(additional_data_len);
+  if (!additional_data)
+    goto extensions_error;
+  num_read = read(x_connection.fd, additional_data, additional_data_len);
+  if (num_read != (ssize_t)additional_data_len)
+    goto extensions_error;
+
+  printf("\nSupported extensions: %u\n", reply.num_names);
+  char name[256] = {};
+  const char *curr_data = additional_data;
+  for (size_t i = 0; i < reply.num_names; ++i) {
+    uint8_t name_len = 0;
+    memcpy(&name_len, curr_data, 1);
+    curr_data += 1;
+    memcpy(name, curr_data, name_len);
+    name[name_len] = '\0';
+    curr_data += name_len;
+    printf("  * %s\n", name);
+  }
+
+  free(additional_data);
+  return;
+
+extensions_error:
+  free(additional_data);
+  fprintf(stderr, "ERROR: Failed to query supported X extensions");
+}
+
 int main() {
   printf("xinfo - X server information printer\n\n");
 
   x_connect();
   print_x_connection_data();
   print_x_font_path();
+  print_x_extensions();
   x_disconnect();
   return 0;
 }
