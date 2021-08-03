@@ -100,7 +100,10 @@ static ssize_t write_n(int fd, const void *buffer, size_t n) {
 #define X_EVENT_MASK_OWNER_GRAB_BUTTON 0x01000000u
 
 #define X_OPCODE_GET_FONT_PATH 52
+#define X_OPCODE_QUERY_EXTENSION 98
 #define X_OPCODE_LIST_EXTENSIONS 99
+
+#define X_EXTENSION_NAME_BIG_REQUESTS "BIG-REQUESTS"
 
 struct x_setup_request {
   uint8_t byte_order; /* Either 'B' for big endian, or 'l' for little endian */
@@ -204,6 +207,7 @@ struct x_setup_data {
 static struct {
   int fd;
   struct x_setup_data setup_data;
+  int big_requests_opcode;
 } x_connection = {
     .fd = -1,
 };
@@ -235,6 +239,41 @@ struct x_list_extensions_reply {
   uint16_t sequence_number;
   uint32_t data_len;
   uint8_t pad[24];
+};
+
+struct x_query_extension_request {
+  uint8_t opcode;
+  uint8_t pad1;
+  uint16_t request_length;
+  uint16_t name_len;
+  uint16_t pad2;
+};
+
+struct x_query_extension_reply {
+  uint8_t status;
+  uint8_t pad1;
+  uint16_t sequence_number;
+  uint32_t data_len;
+  uint8_t present;
+  uint8_t major_opcode;
+  uint8_t first_event;
+  uint8_t first_error;
+  uint8_t pad[20];
+};
+
+struct x_big_requests_enable_request {
+  uint8_t opcode;
+  uint8_t bigreq_opcode;
+  uint16_t request_length;
+};
+
+struct x_big_requests_enable_reply {
+  uint8_t status;
+  uint8_t pad1;
+  uint16_t sequence_number;
+  uint32_t additional_data_len;
+  uint32_t max_request_length;
+  uint8_t pad[18];
 };
 
 static void x_disconnect(void) {
@@ -641,6 +680,43 @@ static void x_connect(void) {
   x_connect_to_display(display_name);
 }
 
+static int x_get_extension_opcode(const char *name) {
+  size_t name_len = strlen(name);
+  struct x_query_extension_request request = {
+      .opcode = X_OPCODE_QUERY_EXTENSION,
+      .request_length = 2 + (X_PAD(name_len) / 4),
+      .name_len = name_len,
+  };
+  int opcode = 0;
+  size_t request_len = sizeof(request) + X_PAD(name_len);
+  char *request_buffer = malloc(request_len);
+  if (!request_buffer)
+    goto end;
+  struct x_query_extension_reply reply = {};
+
+  memcpy(request_buffer, &request, sizeof(request));
+  memcpy(request_buffer + sizeof(request), name, name_len);
+
+  ssize_t num_written = write_n(x_connection.fd, request_buffer, request_len);
+  if (num_written != (long)request_len)
+    goto end;
+  ssize_t num_read = read_n(x_connection.fd, &reply, sizeof(reply));
+  if (num_read != sizeof(reply) || reply.status != X_REPLY)
+    goto end;
+
+  opcode = reply.major_opcode;
+end:
+  free(request_buffer);
+  return opcode;
+}
+
+static int enable_extension(const char *name) {
+  int opcode = x_get_extension_opcode(name);
+  if (strcmp(name, X_EXTENSION_NAME_BIG_REQUESTS) == 0)
+    x_connection.big_requests_opcode = opcode;
+  return opcode;
+}
+
 #define LEFT_PAD 0
 #define FIELD_WIDTH 45
 
@@ -937,8 +1013,16 @@ static void print_x_extensions(void) {
 
   qsort(extension_names, reply.num_names, sizeof(char *), string_comparator);
   printf("\nSupported extensions: %u\n", reply.num_names);
-  for (size_t i = 0; i < reply.num_names; ++i)
-    printf("  * %s\n", extension_names[i]);
+  for (size_t i = 0; i < reply.num_names; ++i) {
+    unsigned int opcode = enable_extension(extension_names[i]);
+#undef LEFT_PAD
+#undef FIELD_WIDTH
+#define LEFT_PAD 4
+#define FIELD_WIDTH 41
+    if (opcode)
+      printf("  * %s%.*s %u\n", extension_names[i],
+             (int)(FIELD_WIDTH - strlen(extension_names[i])), FILL, opcode);
+  }
 
   for (size_t i = 0; i < reply.num_names; ++i)
     free(extension_names[i]);
@@ -956,6 +1040,42 @@ extensions_error:
   fprintf(stderr, "ERROR: Failed to query supported X extensions");
 }
 
+static void print_big_requests_info(void) {
+  struct x_big_requests_enable_request request = {
+      .opcode = x_connection.big_requests_opcode,
+      .bigreq_opcode = 0,
+      .request_length = 1,
+  };
+  struct x_big_requests_enable_reply reply = {};
+
+  ssize_t num_written = write_n(x_connection.fd, &request, sizeof(request));
+  if (num_written != sizeof(request))
+    goto error;
+  ssize_t num_read = read_n(x_connection.fd, &reply, sizeof(reply));
+  if (num_read != sizeof(reply) || reply.status != X_REPLY)
+    goto error;
+
+  printf("  " X_EXTENSION_NAME_BIG_REQUESTS ":\n");
+#undef LEFT_PAD
+#undef FIELD_WIDTH
+#define LEFT_PAD 4
+#define FIELD_WIDTH 41
+  PRINT_FIELD("Maximum request length", "%zu bytes",
+              4 * (uint64_t)reply.max_request_length);
+
+  return;
+error:
+  fprintf(stderr, "ERROR: Failed to get " X_EXTENSION_NAME_BIG_REQUESTS
+                  " extension information\n");
+  return;
+}
+
+static void print_x_extensions_info(void) {
+  printf("\nExtensions information:\n");
+  if (x_connection.big_requests_opcode)
+    print_big_requests_info();
+}
+
 int main() {
   printf("xinfo - X server information printer\n\n");
 
@@ -963,6 +1083,7 @@ int main() {
   print_x_connection_data();
   print_x_font_path();
   print_x_extensions();
+  print_x_extensions_info();
   x_disconnect();
   return 0;
 }
