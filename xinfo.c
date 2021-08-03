@@ -299,7 +299,7 @@ static void x_connect_to_socket(int fd, size_t protocol_name_len,
          sizeof(x_connection.setup_data.data));
   curr_data += sizeof(x_connection.setup_data.data);
   x_connection.setup_data.vendor_name =
-      calloc(x_connection.setup_data.data.vendor_length, 1);
+      calloc(x_connection.setup_data.data.vendor_length + 1, 1);
   if (!x_connection.setup_data.vendor_name) {
     free(additional_data);
     x_disconnect();
