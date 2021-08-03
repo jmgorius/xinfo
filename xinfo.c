@@ -5,6 +5,8 @@
  *
  */
 
+#define _POSIX_C_SOURCE 200112L
+
 #include <asm-generic/errno-base.h>
 #include <errno.h>
 #include <limits.h>
@@ -762,8 +764,6 @@ static void x_connect_to_display(const char *full_display_name) {
         auth_data = xauth_data;
       } else {
         free(xauth_protocol_name);
-        /* Make some effort to avoid leaking secrets */
-        explicit_bzero(xauth_data, xauth_data_len);
         free(xauth_data);
       }
       free(xauth_hostname);
@@ -781,7 +781,6 @@ static void x_connect_to_display(const char *full_display_name) {
                                       auth_protocol_name, auth_data_len,
                                       auth_data);
   free(auth_protocol_name);
-  explicit_bzero(auth_data, auth_data_len);
   free(auth_data);
 }
 
