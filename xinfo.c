@@ -953,6 +953,8 @@ static int generic_query_version32_noparam(unsigned int opcode,
 #define X_EXTENSION_NAME_FONT_CACHE "FontCache"
 #define X_EXTENSION_NAME_GLX "GLX"
 #define X_EXTENSION_NAME_GENERIC_EVENT_EXTENSION "Generic Event Extension"
+#define X_EXTENSION_NAME_LBX "LBX"
+#define X_EXTENSION_NAME_LGE "LGE"
 #define X_EXTENSION_NAME_MIT_SCREEN_SAVER "MIT-SCREEN-SAVER"
 #define X_EXTENSION_NAME_MIT_SHM "MIT-SHM"
 #define X_EXTENSION_NAME_PRESENT "Present"
@@ -963,11 +965,17 @@ static int generic_query_version32_noparam(unsigned int opcode,
 #define X_EXTENSION_NAME_SHAPE "SHAPE"
 #define X_EXTENSION_NAME_SYNC "SYNC"
 #define X_EXTENSION_NAME_TOG_CUP "TOG-CUP"
+#define X_EXTENSION_NAME_WINDOWS_WM "Windows-WM"
 #define X_EXTENSION_NAME_X_RESOURCE "X-Resource"
 #define X_EXTENSION_NAME_XC_APPGROUP "XC-APPGROUP"
 #define X_EXTENSION_NAME_XC_MISC "XC-MISC"
+#define X_EXTENSION_NAME_XCALIBRATE "XCALIBRATE"
 #define X_EXTENSION_NAME_XFIXES "XFIXES"
+#define X_EXTENSION_NAME_XFREE86_BIGFONT "XFree86-Bigfont"
 #define X_EXTENSION_NAME_XFREE86_DGA "XFree86-DGA"
+#define X_EXTENSION_NAME_XFREE86_DRI "XFree86-DRI"
+#define X_EXTENSION_NAME_XFREE86_MISC "XFree86-Misc"
+#define X_EXTENSION_NAME_XFREE86_RUSH "XFree86-Rush"
 #define X_EXTENSION_NAME_XFREE86_VID_MODE_EXTENSION "XFree86-VidModeExtension"
 #define X_EXTENSION_NAME_XINERAMA "XINERAMA"
 #define X_EXTENSION_NAME_XINPUT_EXTENSION "XInputExtension"
@@ -979,6 +987,7 @@ static int generic_query_version32_noparam(unsigned int opcode,
 
 #define X_OPCODE_BIG_REQUESTS_ENABLE 0
 #define X_OPCODE_GLX_QUERY_VERSION 7
+#define X_OPCODE_MIT_SCREEN_SAVER_QUERY_VERSION 0
 #define X_OPCODE_XINPUT_EXTENSION_QUERY_VERSION 47
 #define X_OPCODE_XTEST_QUERY_VERSION 0
 
@@ -1032,6 +1041,30 @@ static int x_xinput_extension_query_version(unsigned int opcode,
                                  minor) != 0;
 }
 
+static int x_mit_screen_saver_query_version(unsigned int opcode,
+                                            unsigned int *major,
+                                            unsigned int *minor) {
+  struct x_generic_query_version8_request request = {
+      .opcode = opcode,
+      .extension_opcode = X_OPCODE_MIT_SCREEN_SAVER_QUERY_VERSION,
+      .request_len = sizeof(struct x_generic_query_version8_request) / 4,
+      .version_major = (uint8_t)-1,
+      .version_minor = (uint8_t)-1,
+  };
+  struct x_generic_query_version16_reply reply = {0};
+
+  ssize_t num_written = write_n(x_connection.fd, &request, sizeof(request));
+  if (num_written != sizeof(request))
+    return 1;
+  ssize_t num_read = read_n(x_connection.fd, &reply, sizeof(reply));
+  if (num_read != sizeof(reply) || reply.status != X_REPLY)
+    return 1;
+
+  *major = reply.version_major;
+  *minor = reply.version_minor;
+  return 0;
+}
+
 static int x_xtest_query_version(unsigned int opcode, unsigned int *major,
                                  unsigned int *minor) {
   struct x_xtest_query_version_request request = {
@@ -1057,82 +1090,98 @@ static int x_xtest_query_version(unsigned int opcode, unsigned int *major,
 
 struct x_extension_info {
   const char *name;
-  int (*query_version_func)(unsigned int opcode, unsigned int *major,
+  int (*version_query_func)(unsigned int opcode, unsigned int *major,
                             unsigned int *minor);
 };
 
 static struct x_extension_info x_extensions[] = {
     {.name = X_EXTENSION_NAME_APPLE_WM,
-     .query_version_func = x_generic_query_version16_noparam_zero},
+     .version_query_func = x_generic_query_version16_noparam_zero},
     {.name = X_EXTENSION_NAME_BIG_REQUESTS,
-     .query_version_func = x_big_request_query_version},
+     .version_query_func = x_big_request_query_version},
     {.name = X_EXTENSION_NAME_COMPOSITE,
-     .query_version_func = x_generic_query_version32_zero},
+     .version_query_func = x_generic_query_version32_zero},
     {.name = X_EXTENSION_NAME_DAMAGE,
-     .query_version_func = x_generic_query_version32_zero},
+     .version_query_func = x_generic_query_version32_zero},
     {.name = X_EXTENSION_NAME_DOUBLE_BUFFER,
-     .query_version_func = x_generic_query_version8_zero},
+     .version_query_func = x_generic_query_version8_zero},
     {.name = X_EXTENSION_NAME_DPMS,
-     .query_version_func = x_generic_query_version16_zero},
+     .version_query_func = x_generic_query_version16_zero},
     {.name = X_EXTENSION_NAME_DMX,
-     .query_version_func = x_generic_query_version32_noparam_zero},
+     .version_query_func = x_generic_query_version32_noparam_zero},
     {.name = X_EXTENSION_NAME_DRI2,
-     .query_version_func = x_generic_query_version32_zero},
+     .version_query_func = x_generic_query_version32_zero},
     {.name = X_EXTENSION_NAME_DRI3,
-     .query_version_func = x_generic_query_version32_zero},
+     .version_query_func = x_generic_query_version32_zero},
     {.name = X_EXTENSION_NAME_EXTENDED_VISUAL_INFORMATION,
-     .query_version_func = x_generic_query_version16_noparam_zero},
+     .version_query_func = x_generic_query_version16_noparam_zero},
     {.name = X_EXTENSION_NAME_FONT_CACHE,
-     .query_version_func = x_generic_query_version16_noparam_zero},
-    {.name = X_EXTENSION_NAME_GLX, .query_version_func = x_glx_query_version},
+     .version_query_func = x_generic_query_version16_noparam_zero},
+    {.name = X_EXTENSION_NAME_GLX, .version_query_func = x_glx_query_version},
     {.name = X_EXTENSION_NAME_GENERIC_EVENT_EXTENSION,
-     .query_version_func = x_generic_query_version16_zero},
+     .version_query_func = x_generic_query_version16_zero},
+    {.name = X_EXTENSION_NAME_LBX,
+     .version_query_func = x_generic_query_version16_noparam_zero},
+    {.name = X_EXTENSION_NAME_LGE,
+     .version_query_func = x_generic_query_version32_noparam_zero},
     {.name = X_EXTENSION_NAME_MIT_SCREEN_SAVER,
-     .query_version_func = x_generic_query_version8_zero},
+     .version_query_func = x_mit_screen_saver_query_version},
     {.name = X_EXTENSION_NAME_MIT_SHM,
-     .query_version_func = x_generic_query_version16_noparam_zero},
+     .version_query_func = x_generic_query_version16_noparam_zero},
     {.name = X_EXTENSION_NAME_PRESENT,
-     .query_version_func = x_generic_query_version32_zero},
+     .version_query_func = x_generic_query_version32_zero},
     {.name = X_EXTENSION_NAME_RANDR,
-     .query_version_func = x_generic_query_version32_zero},
+     .version_query_func = x_generic_query_version32_zero},
     {.name = X_EXTENSION_NAME_RECORD,
-     .query_version_func = x_generic_query_version16_zero},
+     .version_query_func = x_generic_query_version16_zero},
     {.name = X_EXTENSION_NAME_RENDER,
-     .query_version_func = x_generic_query_version32_zero},
+     .version_query_func = x_generic_query_version32_zero},
     {.name = X_EXTENSION_NAME_SECURITY,
-     .query_version_func = x_generic_query_version16_zero},
+     .version_query_func = x_generic_query_version16_zero},
     {.name = X_EXTENSION_NAME_SHAPE,
-     .query_version_func = x_generic_query_version16_noparam_zero},
+     .version_query_func = x_generic_query_version16_noparam_zero},
     {.name = X_EXTENSION_NAME_SYNC,
-     .query_version_func = x_generic_query_version8_zero},
+     .version_query_func = x_generic_query_version8_zero},
     {.name = X_EXTENSION_NAME_TOG_CUP,
-     .query_version_func = x_generic_query_version16_zero},
+     .version_query_func = x_generic_query_version16_zero},
+    {.name = X_EXTENSION_NAME_WINDOWS_WM,
+     .version_query_func = x_generic_query_version16_noparam_zero},
     {.name = X_EXTENSION_NAME_X_RESOURCE,
-     .query_version_func = x_generic_query_version8_zero},
+     .version_query_func = x_generic_query_version8_zero},
     {.name = X_EXTENSION_NAME_XC_APPGROUP,
-     .query_version_func = x_generic_query_version16_zero},
+     .version_query_func = x_generic_query_version16_zero},
     {.name = X_EXTENSION_NAME_XC_MISC,
-     .query_version_func = x_generic_query_version16_zero},
+     .version_query_func = x_generic_query_version16_zero},
+    {.name = X_EXTENSION_NAME_XCALIBRATE,
+     .version_query_func = x_generic_query_version32_zero},
     {.name = X_EXTENSION_NAME_XFIXES,
-     .query_version_func = x_generic_query_version32_zero},
+     .version_query_func = x_generic_query_version32_zero},
+    {.name = X_EXTENSION_NAME_XFREE86_BIGFONT,
+     .version_query_func = x_generic_query_version16_noparam_zero},
     {.name = X_EXTENSION_NAME_XFREE86_DGA,
-     .query_version_func = x_generic_query_version16_noparam_zero},
+     .version_query_func = x_generic_query_version16_noparam_zero},
+    {.name = X_EXTENSION_NAME_XFREE86_DRI,
+     .version_query_func = x_generic_query_version16_noparam_zero},
+    {.name = X_EXTENSION_NAME_XFREE86_MISC,
+     .version_query_func = x_generic_query_version16_noparam_zero},
+    {.name = X_EXTENSION_NAME_XFREE86_RUSH,
+     .version_query_func = x_generic_query_version16_noparam_zero},
     {.name = X_EXTENSION_NAME_XFREE86_VID_MODE_EXTENSION,
-     .query_version_func = x_generic_query_version16_noparam_zero},
+     .version_query_func = x_generic_query_version16_noparam_zero},
     {.name = X_EXTENSION_NAME_XINERAMA,
-     .query_version_func = x_generic_query_version8_zero},
+     .version_query_func = x_generic_query_version8_zero},
     {.name = X_EXTENSION_NAME_XINPUT_EXTENSION,
-     .query_version_func = x_xinput_extension_query_version},
+     .version_query_func = x_xinput_extension_query_version},
     {.name = X_EXTENSION_NAME_XKEYBOARD,
-     .query_version_func = x_generic_query_version16_zero},
+     .version_query_func = x_generic_query_version16_zero},
     {.name = X_EXTENSION_NAME_XPRINT,
-     .query_version_func = x_generic_query_version16_noparam_zero},
+     .version_query_func = x_generic_query_version16_noparam_zero},
     {.name = X_EXTENSION_NAME_XTEST,
-     .query_version_func = x_xtest_query_version},
+     .version_query_func = x_xtest_query_version},
     {.name = X_EXTENSION_NAME_XVIDEO,
-     .query_version_func = x_generic_query_version16_noparam_zero},
+     .version_query_func = x_generic_query_version16_noparam_zero},
     {.name = X_EXTENSION_NAME_XVIDEO_MOTION_COMPENSATION,
-     .query_version_func = x_generic_query_version32_noparam_zero}};
+     .version_query_func = x_generic_query_version32_noparam_zero}};
 
 static int x_get_extension_version(const char *name, unsigned int opcode,
                                    unsigned int *major, unsigned *minor) {
@@ -1140,7 +1189,7 @@ static int x_get_extension_version(const char *name, unsigned int opcode,
       sizeof(x_extensions) / sizeof(struct x_extension_info);
   for (size_t i = 0; i < num_extensions; ++i) {
     if (strcmp(x_extensions[i].name, name) == 0)
-      return x_extensions[i].query_version_func(opcode, major, minor);
+      return x_extensions[i].version_query_func(opcode, major, minor);
   }
   return 1;
 }
