@@ -939,15 +939,18 @@ static int generic_query_version32_noparam(unsigned int opcode,
   return 0;
 }
 
+#define X_EXTENSION_NAME_APPLE_WM "Apple-WM"
 #define X_EXTENSION_NAME_BIG_REQUESTS "BIG-REQUESTS"
 #define X_EXTENSION_NAME_COMPOSITE "Composite"
 #define X_EXTENSION_NAME_DAMAGE "DAMAGE"
 #define X_EXTENSION_NAME_DOUBLE_BUFFER "DOUBLE-BUFFER"
 #define X_EXTENSION_NAME_DPMS "DPMS"
+#define X_EXTENSION_NAME_DMX "DMX"
 #define X_EXTENSION_NAME_DRI2 "DRI2"
 #define X_EXTENSION_NAME_DRI3 "DRI3"
 #define X_EXTENSION_NAME_EXTENDED_VISUAL_INFORMATION                           \
   "Extended-Visual-Information"
+#define X_EXTENSION_NAME_FONT_CACHE "FontCache"
 #define X_EXTENSION_NAME_GLX "GLX"
 #define X_EXTENSION_NAME_GENERIC_EVENT_EXTENSION "Generic Event Extension"
 #define X_EXTENSION_NAME_MIT_SCREEN_SAVER "MIT-SCREEN-SAVER"
@@ -959,7 +962,9 @@ static int generic_query_version32_noparam(unsigned int opcode,
 #define X_EXTENSION_NAME_SECURITY "SECURITY"
 #define X_EXTENSION_NAME_SHAPE "SHAPE"
 #define X_EXTENSION_NAME_SYNC "SYNC"
+#define X_EXTENSION_NAME_TOG_CUP "TOG-CUP"
 #define X_EXTENSION_NAME_X_RESOURCE "X-Resource"
+#define X_EXTENSION_NAME_XC_APPGROUP "XC-APPGROUP"
 #define X_EXTENSION_NAME_XC_MISC "XC-MISC"
 #define X_EXTENSION_NAME_XFIXES "XFIXES"
 #define X_EXTENSION_NAME_XFREE86_DGA "XFree86-DGA"
@@ -967,18 +972,22 @@ static int generic_query_version32_noparam(unsigned int opcode,
 #define X_EXTENSION_NAME_XINERAMA "XINERAMA"
 #define X_EXTENSION_NAME_XINPUT_EXTENSION "XInputExtension"
 #define X_EXTENSION_NAME_XKEYBOARD "XKEYBOARD"
+#define X_EXTENSION_NAME_XPRINT "XpExtension"
 #define X_EXTENSION_NAME_XTEST "XTEST"
 #define X_EXTENSION_NAME_XVIDEO "XVideo"
 #define X_EXTENSION_NAME_XVIDEO_MOTION_COMPENSATION "XVideo-MotionCompensation"
 
+#define X_OPCODE_APPLE_WM_QUERY_VERSION 0
 #define X_OPCODE_BIG_REQUESTS_ENABLE 0
 #define X_OPCODE_COMPOSITE_QUERY_VERSION 0
 #define X_OPCODE_DAMAGE_QUERY_VERSION 0
 #define X_OPCODE_DOUBLE_BUFFER_GET_VERSION 0
 #define X_OPCODE_DPMS_GET_VERSION 0
+#define X_OPCODE_DMX_QUERY_VERSION 0
 #define X_OPCODE_DRI2_QUERY_VERSION 0
 #define X_OPCODE_DRI3_QUERY_VERSION 0
 #define X_OPCODE_EXTENDED_VISUAL_INFORMATION_QUERY_VERSION 0
+#define X_OPCODE_FONT_CACHE_QUERY_VERSION 0
 #define X_OPCODE_GLX_QUERY_VERSION 7
 #define X_OPCODE_GENERIC_EVENT_EXTENSION_QUERY_VERSION 0
 #define X_OPCODE_MIT_SCREEN_SAVER_QUERY_VERSION 0
@@ -990,7 +999,9 @@ static int generic_query_version32_noparam(unsigned int opcode,
 #define X_OPCODE_SECURITY_QUERY_VERSION 0
 #define X_OPCODE_SHAPE_QUERY_VERSION 0
 #define X_OPCODE_SYNC_INITIALIZE 0
+#define X_OPCODE_TOG_CUP_QUERY_VERSION 0
 #define X_OPCODE_X_RESOURCE_QUERY_VERSION 0
+#define X_OPCODE_XC_APPGROUP_QUERY_VERSION 0
 #define X_OPCODE_XC_MISC_QUERY_VERSION 0
 #define X_OPCODE_XFIXES_QUERY_VERSION 0
 #define X_OPCODE_XFREE86_DGA_QUERY_VERSION 0
@@ -998,9 +1009,17 @@ static int generic_query_version32_noparam(unsigned int opcode,
 #define X_OPCODE_XINERAMA_QUERY_VERSION 0
 #define X_OPCODE_XINPUT_EXTENSION_QUERY_VERSION 47
 #define X_OPCODE_XKEYBOARD_QUERY_VERSION 0
+#define X_OPCODE_XPRINT_QUERY_VERSION 0
 #define X_OPCODE_XTEST_QUERY_VERSION 0
 #define X_OPCODE_XVIDEO_QUERY_VERSION 0
 #define X_OPCODE_XVIDEO_MOTION_COMPENSATION_QUERY_VERSION 0
+
+static int x_apple_wm_query_version(unsigned int opcode, unsigned int *major,
+                                    unsigned int *minor) {
+  /* The Apple WM extension also returns a patch version, just ignore it */
+  return generic_query_version16_noparam(
+             opcode, X_OPCODE_APPLE_WM_QUERY_VERSION, major, minor) != 0;
+}
 
 static int x_big_request_query_version(unsigned int opcode, unsigned int *major,
                                        unsigned int *minor) {
@@ -1035,6 +1054,13 @@ static int x_dpms_query_version(unsigned int opcode, unsigned int *major,
                                  minor) != 0;
 }
 
+static int x_dmx_query_version(unsigned int opcode, unsigned int *major,
+                               unsigned int *minor) {
+  /* The DMX extension also returns a patch version, just ignore it */
+  return generic_query_version32_noparam(opcode, X_OPCODE_DMX_QUERY_VERSION,
+                                         major, minor) != 0;
+}
+
 static int x_dri2_query_version(unsigned int opcode, unsigned int *major,
                                 unsigned int *minor) {
   return generic_query_version32(opcode, X_OPCODE_DRI2_QUERY_VERSION, major,
@@ -1052,6 +1078,12 @@ static int x_extended_visual_information_query_version(unsigned int opcode,
                                                        unsigned int *minor) {
   return generic_query_version16_noparam(opcode, X_OPCODE_DRI3_QUERY_VERSION,
                                          major, minor) != 0;
+}
+
+static int x_font_cache_query_version(unsigned int opcode, unsigned int *major,
+                                      unsigned int *minor) {
+  return generic_query_version16_noparam(
+             opcode, X_OPCODE_FONT_CACHE_QUERY_VERSION, major, minor) != 0;
 }
 
 static int x_glx_query_version(unsigned int opcode, unsigned int *major,
@@ -1123,10 +1155,22 @@ static int x_sync_query_version(unsigned int opcode, unsigned int *major,
                                 minor) != 0;
 }
 
+static int x_tog_cup_query_version(unsigned int opcode, unsigned int *major,
+                                   unsigned int *minor) {
+  return generic_query_version16(opcode, X_OPCODE_TOG_CUP_QUERY_VERSION, major,
+                                 minor) != 0;
+}
+
 static int x_xresource_query_version(unsigned int opcode, unsigned int *major,
                                      unsigned int *minor) {
   return generic_query_version8(opcode, X_OPCODE_X_RESOURCE_QUERY_VERSION,
                                 major, minor) != 0;
+}
+
+static int x_xc_appgroup_query_version(unsigned int opcode, unsigned int *major,
+                                       unsigned int *minor) {
+  return generic_query_version16(opcode, X_OPCODE_XC_APPGROUP_QUERY_VERSION,
+                                 major, minor) != 0;
 }
 
 static int x_xc_misc_query_version(unsigned int opcode, unsigned int *major,
@@ -1175,6 +1219,12 @@ static int x_xkeyboard_query_version(unsigned int opcode, unsigned int *major,
                                  major, minor) != 0;
 }
 
+static int x_xprint_query_version(unsigned int opcode, unsigned int *major,
+                                  unsigned int *minor) {
+  return generic_query_version16_noparam(opcode, X_OPCODE_XPRINT_QUERY_VERSION,
+                                         major, minor) != 0;
+}
+
 static int x_xtest_query_version(unsigned int opcode, unsigned int *major,
                                  unsigned int *minor) {
   struct x_xtest_query_version_request request = {
@@ -1219,6 +1269,8 @@ struct x_extension_info {
 };
 
 static struct x_extension_info x_extensions[] = {
+    {.name = X_EXTENSION_NAME_APPLE_WM,
+     .query_version_func = x_apple_wm_query_version},
     {.name = X_EXTENSION_NAME_BIG_REQUESTS,
      .query_version_func = x_big_request_query_version},
     {.name = X_EXTENSION_NAME_COMPOSITE,
@@ -1228,10 +1280,13 @@ static struct x_extension_info x_extensions[] = {
     {.name = X_EXTENSION_NAME_DOUBLE_BUFFER,
      .query_version_func = x_double_buffer_query_version},
     {.name = X_EXTENSION_NAME_DPMS, .query_version_func = x_dpms_query_version},
+    {.name = X_EXTENSION_NAME_DMX, .query_version_func = x_dmx_query_version},
     {.name = X_EXTENSION_NAME_DRI2, .query_version_func = x_dri2_query_version},
     {.name = X_EXTENSION_NAME_DRI3, .query_version_func = x_dri3_query_version},
     {.name = X_EXTENSION_NAME_EXTENDED_VISUAL_INFORMATION,
      .query_version_func = x_extended_visual_information_query_version},
+    {.name = X_EXTENSION_NAME_FONT_CACHE,
+     .query_version_func = x_font_cache_query_version},
     {.name = X_EXTENSION_NAME_GLX, .query_version_func = x_glx_query_version},
     {.name = X_EXTENSION_NAME_GENERIC_EVENT_EXTENSION,
      .query_version_func = x_generic_event_extension_query_version},
@@ -1252,8 +1307,12 @@ static struct x_extension_info x_extensions[] = {
     {.name = X_EXTENSION_NAME_SHAPE,
      .query_version_func = x_shape_query_version},
     {.name = X_EXTENSION_NAME_SYNC, .query_version_func = x_sync_query_version},
+    {.name = X_EXTENSION_NAME_TOG_CUP,
+     .query_version_func = x_tog_cup_query_version},
     {.name = X_EXTENSION_NAME_X_RESOURCE,
      .query_version_func = x_xresource_query_version},
+    {.name = X_EXTENSION_NAME_XC_APPGROUP,
+     .query_version_func = x_xc_appgroup_query_version},
     {.name = X_EXTENSION_NAME_XC_MISC,
      .query_version_func = x_xc_misc_query_version},
     {.name = X_EXTENSION_NAME_XFIXES,
@@ -1268,6 +1327,8 @@ static struct x_extension_info x_extensions[] = {
      .query_version_func = x_xinput_extension_query_version},
     {.name = X_EXTENSION_NAME_XKEYBOARD,
      .query_version_func = x_xkeyboard_query_version},
+    {.name = X_EXTENSION_NAME_XPRINT,
+     .query_version_func = x_xprint_query_version},
     {.name = X_EXTENSION_NAME_XTEST,
      .query_version_func = x_xtest_query_version},
     {.name = X_EXTENSION_NAME_XVIDEO,
