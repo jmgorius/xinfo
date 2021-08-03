@@ -110,6 +110,7 @@ static ssize_t write_n(int fd, const void *buffer, size_t n) {
 #define X_EXTENSION_NAME_DPMS "DPMS"
 #define X_EXTENSION_NAME_DRI2 "DRI2"
 #define X_EXTENSION_NAME_DRI3 "DRI3"
+#define X_EXTENSION_NAME_GLX "GLX"
 
 #define X_OPCODE_BIG_REQUESTS_ENABLE 0
 #define X_OPCODE_COMPOSITE_QUERY_VERSION 0
@@ -120,6 +121,7 @@ static ssize_t write_n(int fd, const void *buffer, size_t n) {
 #define X_OPCODE_DPMS_GET_TIMEOUTS 2
 #define X_OPCODE_DRI2_QUERY_VERSION 0
 #define X_OPCODE_DRI3_QUERY_VERSION 0
+#define X_OPCODE_GLX_QUERY_VERSION 7
 
 struct x_setup_request {
   uint8_t byte_order; /* Either 'B' for big endian, or 'l' for little endian */
@@ -230,6 +232,7 @@ static struct {
   unsigned int dpms_opcode;
   unsigned int dri2_opcode;
   unsigned int dri3_opcode;
+  unsigned int glx_opcode;
 } x_connection = {
     .fd = -1,
 };
@@ -430,6 +433,24 @@ struct x_dri3_query_version_request {
 };
 
 struct x_dri3_query_version_reply {
+  uint8_t status;
+  uint8_t pad1;
+  uint16_t sequence_number;
+  uint32_t additional_data_len;
+  uint32_t version_major;
+  uint32_t version_minor;
+  uint8_t pad[16];
+};
+
+struct x_glx_query_version_request {
+  uint8_t opcode;
+  uint8_t extension_opcode;
+  uint16_t request_len;
+  uint32_t version_major;
+  uint32_t version_minor;
+};
+
+struct x_glx_query_version_reply {
   uint8_t status;
   uint8_t pad1;
   uint16_t sequence_number;
@@ -889,6 +910,8 @@ static unsigned int enable_extension(const char *name) {
     x_connection.dri2_opcode = opcode;
   else if (strcmp(name, X_EXTENSION_NAME_DRI3) == 0)
     x_connection.dri3_opcode = opcode;
+  else if (strcmp(name, X_EXTENSION_NAME_GLX) == 0)
+    x_connection.glx_opcode = opcode;
   return opcode;
 }
 
@@ -1491,6 +1514,38 @@ error:
   return;
 }
 
+static void print_glx_info(void) {
+  struct x_glx_query_version_request request = {
+      .opcode = x_connection.glx_opcode,
+      .extension_opcode = X_OPCODE_GLX_QUERY_VERSION,
+      .request_len = sizeof(struct x_glx_query_version_request) / 4,
+      .version_major = (uint32_t)-1,
+      .version_minor = (uint32_t)-1,
+  };
+  struct x_glx_query_version_reply reply = {};
+
+  ssize_t num_written = write_n(x_connection.fd, &request, sizeof(request));
+  if (num_written != sizeof(request))
+    goto error;
+  ssize_t num_read = read_n(x_connection.fd, &reply, sizeof(reply));
+  if (num_read != sizeof(reply) || reply.status != X_REPLY)
+    goto error;
+
+  printf("  " X_EXTENSION_NAME_GLX ":\n");
+#undef LEFT_PAD
+#undef FIELD_WIDTH
+#define LEFT_PAD 4
+#define FIELD_WIDTH 41
+  PRINT_FIELD("Latest supported version", "%u.%u", reply.version_major,
+              reply.version_minor);
+
+  return;
+error:
+  fprintf(stderr, "ERROR: Failed to get " X_EXTENSION_NAME_GLX
+                  " extension information\n");
+  return;
+}
+
 static void print_x_extensions_info(void) {
   printf("\nExtensions information:\n");
   if (x_connection.big_requests_opcode)
@@ -1507,6 +1562,8 @@ static void print_x_extensions_info(void) {
     print_dri2_info();
   if (x_connection.dri3_opcode)
     print_dri3_info();
+  if (x_connection.glx_opcode)
+    print_glx_info();
 }
 
 int main() {
