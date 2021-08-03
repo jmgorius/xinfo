@@ -66,6 +66,7 @@ static ssize_t write_n(int fd, const void *buffer, size_t n) {
 #define X_PADDING(x) ((4 - ((x) % 4)) % 4)
 #define X_PAD(x) ((x) + X_PADDING((x)))
 
+#define X_REPLY 1
 #define X_CONNECTION_STATUS_SUCCESS 1
 #define X_BYTE_ORDER_LITTLE_ENDIAN 0
 #define X_BITMAP_FORMAT_BIT_ORDER_LEAST_SIGNIFICANT 0
@@ -97,6 +98,8 @@ static ssize_t write_n(int fd, const void *buffer, size_t n) {
 #define X_EVENT_MASK_PROPERTY_CHANGE 0x00400000u
 #define X_EVENT_MASK_COLORMAP_CHANGE 0x00800000u
 #define X_EVENT_MASK_OWNER_GRAB_BUTTON 0x01000000u
+
+#define X_OPCODE_GET_FONT_PATH 52
 
 struct x_setup_request {
   uint8_t byte_order; /* Either 'B' for big endian, or 'l' for little endian */
@@ -202,6 +205,21 @@ static struct {
   struct x_setup_data setup_data;
 } x_connection = {
     .fd = -1,
+};
+
+struct x_get_font_path_request {
+  uint8_t opcode;
+  uint8_t pad;
+  uint16_t request_length;
+};
+
+struct x_get_font_path_reply {
+  uint8_t status;
+  uint8_t pad1;
+  uint16_t sequence_number;
+  uint32_t data_len;
+  uint16_t num_strings;
+  uint8_t pad[22];
 };
 
 static void x_disconnect(void) {
@@ -620,7 +638,7 @@ static void x_connect(void) {
                                                                "\n",           \
          SPACE, name FILL, __VA_ARGS__)
 
-static void dump_x_connection_data(void) {
+static void print_x_connection_data(void) {
   const char *image_byte_order =
       x_connection.setup_data.data.image_byte_order ==
               X_BYTE_ORDER_LITTLE_ENDIAN
@@ -806,11 +824,59 @@ static void dump_x_connection_data(void) {
   }
 }
 
+static void print_x_font_path(void) {
+  struct x_get_font_path_request request = {
+      .opcode = X_OPCODE_GET_FONT_PATH,
+      .request_length = 1,
+  };
+  char *additional_data = 0;
+
+  /* Request the font search paths from the X server */
+  ssize_t num_written = write_n(x_connection.fd, &request, sizeof(request));
+  if (num_written != sizeof(request))
+    goto font_error;
+
+  struct x_get_font_path_reply reply = {};
+  ssize_t num_read = read_n(x_connection.fd, &reply, sizeof(reply));
+  /* If we fail, don't try to understand why and just return */
+  if (num_read != sizeof(reply) || reply.status != X_REPLY)
+    goto font_error;
+
+  size_t additional_data_len = 4 * reply.data_len;
+  additional_data = malloc(additional_data_len);
+  if (!additional_data)
+    goto font_error;
+  num_read = read(x_connection.fd, additional_data, additional_data_len);
+  if (num_read != (ssize_t)additional_data_len)
+    goto font_error;
+
+  printf("\nFont search paths:\n");
+  char path[256] = {};
+  const char *curr_data = additional_data;
+  for (size_t i = 0; i < reply.num_strings; ++i) {
+    uint8_t path_len = 0;
+    memcpy(&path_len, curr_data, 1);
+    curr_data += 1;
+    memcpy(path, curr_data, path_len);
+    path[path_len] = '\0';
+    curr_data += path_len;
+    printf("  * %s\n", path);
+  }
+
+  free(additional_data);
+  return;
+
+font_error:
+  free(additional_data);
+  fprintf(stderr, "ERROR: Failed get X font search paths\n");
+}
+
 int main() {
-  printf("xinfo - X server information dumper\n\n");
+  printf("xinfo - X server information printer\n\n");
 
   x_connect();
-  dump_x_connection_data();
+  print_x_connection_data();
+  print_x_font_path();
   x_disconnect();
   return 0;
 }
