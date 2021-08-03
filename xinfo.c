@@ -18,7 +18,13 @@
 #include <sys/un.h>
 #include <unistd.h>
 
-static void die(const char *msg) {
+#if defined(__GNUC__)
+#define NORETURN __attribute__((__noreturn__))
+#else
+#define NORETURN
+#endif
+
+NORETURN static void die(const char *msg) {
   fprintf(stderr, "FATAL ERROR: %s\n", msg);
   exit(1);
 }
@@ -56,8 +62,6 @@ static ssize_t write_n(int fd, const void *buffer, size_t n) {
   }
   return total_written;
 }
-
-#define MAX_XAUTHORITY_ENTRIES 32
 
 #define X_VERSION_MAJOR 11
 #define X_VERSION_MINOR 0
@@ -108,8 +112,6 @@ static ssize_t write_n(int fd, const void *buffer, size_t n) {
 #define X_OPCODE_DAMAGE_QUERY_VERSION 0
 #define X_OPCODE_DOUBLE_BUFFER_GET_VERSION 0
 #define X_OPCODE_DPMS_GET_VERSION 0
-#define X_OPCODE_DPMS_CAPABLE 1
-#define X_OPCODE_DPMS_GET_TIMEOUTS 2
 #define X_OPCODE_DRI2_QUERY_VERSION 0
 #define X_OPCODE_DRI3_QUERY_VERSION 0
 #define X_OPCODE_GLX_QUERY_VERSION 7
@@ -225,33 +227,17 @@ struct x_screen {
 };
 
 struct x_setup_data {
-  struct x_setup_data_impl data;
   char *vendor_name;
   struct x_format *pixmap_formats;
   struct x_screen *roots;
+  struct x_setup_data_impl data;
   uint16_t version_major;
   uint16_t version_minor;
 };
 
 static struct {
-  int fd;
   struct x_setup_data setup_data;
-  unsigned int big_requests_opcode;
-  unsigned int composite_opcode;
-  unsigned int damage_opcode;
-  unsigned int double_buffer_opcode;
-  unsigned int dpms_opcode;
-  unsigned int dri2_opcode;
-  unsigned int dri3_opcode;
-  unsigned int glx_opcode;
-  unsigned int generic_event_extension_opcode;
-  unsigned int mit_screen_saver_opcode;
-  unsigned int mit_shm_opcode;
-  unsigned int present_opcode;
-  unsigned int randr_opcode;
-  unsigned int record_opcode;
-  unsigned int render_opcode;
-  unsigned int security_opcode;
+  int fd;
 } x_connection = {
     .fd = -1,
 };
@@ -469,7 +455,7 @@ static void x_connect_to_socket(int fd, size_t protocol_name_len,
     die("Failed to send connection request to X server");
 
   /* Read the connection setup response */
-  struct x_setup_response response = {};
+  struct x_setup_response response = {0};
   ssize_t num_read = read_n(x_connection.fd, &response, sizeof(response));
   if (num_read != sizeof(response)) {
     x_disconnect();
@@ -615,7 +601,7 @@ static void parse_x_display_name(const char *full_name, char *hostname,
 }
 
 static int get_socket_for_display(const char *full_display_name) {
-  char hostname[HOST_NAME_MAX] = {};
+  char hostname[HOST_NAME_MAX] = {0};
   size_t hostname_len = 0;
   unsigned long number = 0;
   unsigned long screen = 0;
@@ -637,7 +623,7 @@ static int get_socket_for_display(const char *full_display_name) {
       die("Failed to create UNIX domain socket");
 
     struct sockaddr_un server_addr = {.sun_family = AF_UNIX};
-    char path[sizeof(server_addr.sun_path)] = {};
+    char path[sizeof(server_addr.sun_path)] = {0};
     snprintf(path, sizeof(path), "/tmp/.X11-unix/X%lu", number);
     memcpy(server_addr.sun_path, path, sizeof(path));
 
@@ -715,7 +701,7 @@ static int read_counted_string(FILE *file, uint16_t *length, char **string) {
 }
 
 static void x_connect_to_display(const char *full_display_name) {
-  char hostname[HOST_NAME_MAX] = {};
+  char hostname[HOST_NAME_MAX] = {0};
   size_t hostname_len = 0;
   unsigned long number = 0;
   unsigned long screen = 0;
@@ -825,7 +811,7 @@ static unsigned int x_get_extension_opcode(const char *name) {
   char *request_buffer = calloc(request_len, 1);
   if (!request_buffer)
     goto end;
-  struct x_query_extension_reply reply = {};
+  struct x_query_extension_reply reply = {0};
 
   memcpy(request_buffer, &request, sizeof(request));
   memcpy(request_buffer + sizeof(request), name, name_len);
@@ -855,7 +841,7 @@ static int generic_query_version8(unsigned int opcode,
       .version_major = (uint8_t)-1,
       .version_minor = (uint8_t)-1,
   };
-  struct x_generic_query_version8_reply reply = {};
+  struct x_generic_query_version8_reply reply = {0};
 
   ssize_t num_written = write_n(x_connection.fd, &request, sizeof(request));
   if (num_written != sizeof(request))
@@ -880,7 +866,7 @@ static int generic_query_version16(unsigned int opcode,
       .version_major = (uint16_t)-1,
       .version_minor = (uint16_t)-1,
   };
-  struct x_generic_query_version16_reply reply = {};
+  struct x_generic_query_version16_reply reply = {0};
 
   ssize_t num_written = write_n(x_connection.fd, &request, sizeof(request));
   if (num_written != sizeof(request))
@@ -905,7 +891,7 @@ static int generic_query_version32(unsigned int opcode,
       .version_major = (uint32_t)-1,
       .version_minor = (uint32_t)-1,
   };
-  struct x_generic_query_version32_reply reply = {};
+  struct x_generic_query_version32_reply reply = {0};
 
   ssize_t num_written = write_n(x_connection.fd, &request, sizeof(request));
   if (num_written != sizeof(request))
@@ -929,7 +915,7 @@ static int generic_query_version16_noparam(unsigned int opcode,
       .request_len =
           sizeof(struct x_generic_query_version16_noparam_request) / 4,
   };
-  struct x_generic_query_version16_noparam_reply reply = {};
+  struct x_generic_query_version16_noparam_reply reply = {0};
 
   ssize_t num_written = write_n(x_connection.fd, &request, sizeof(request));
   if (num_written != sizeof(request))
@@ -988,8 +974,8 @@ static int x_composite_query_version(unsigned int opcode, unsigned int *major,
 
 static int x_damage_query_version(unsigned int opcode, unsigned int *major,
                                   unsigned int *minor) {
-  return generic_query_version32(opcode, X_OPCODE_COMPOSITE_QUERY_VERSION,
-                                 major, minor) != 0;
+  return generic_query_version32(opcode, X_OPCODE_DAMAGE_QUERY_VERSION, major,
+                                 minor) != 0;
 }
 
 static int x_double_buffer_query_version(unsigned int opcode,
@@ -1147,7 +1133,7 @@ static int x_xtest_query_version(unsigned int opcode, unsigned int *major,
       .version_major = (uint8_t)-1,
       .version_minor = (uint16_t)-1,
   };
-  struct x_xtest_query_version_reply reply = {};
+  struct x_xtest_query_version_reply reply = {0};
 
   ssize_t num_written = write_n(x_connection.fd, &request, sizeof(request));
   if (num_written != sizeof(request))
@@ -1447,7 +1433,7 @@ static void print_x_font_path(void) {
   if (num_written != sizeof(request))
     goto font_error;
 
-  struct x_get_font_path_reply reply = {};
+  struct x_get_font_path_reply reply = {0};
   ssize_t num_read = read_n(x_connection.fd, &reply, sizeof(reply));
   /* If we fail, don't try to understand why and just return */
   if (num_read != sizeof(reply) || reply.status != X_REPLY)
@@ -1462,7 +1448,7 @@ static void print_x_font_path(void) {
     goto font_error;
 
   printf("\nFont search paths:\n");
-  char path[256] = {};
+  char path[256] = {0};
   const char *curr_data = additional_data;
   for (size_t i = 0; i < reply.num_strings; ++i) {
     uint8_t path_len = 0;
@@ -1484,8 +1470,8 @@ font_error:
 
 /* To sort extension names alphabetically */
 static int string_comparator(const void *lhs, const void *rhs) {
-  const char **first = (const char **)lhs;
-  const char **second = (const char **)rhs;
+  const char *const *first = (const char *const *)lhs;
+  const char *const *second = (const char *const *)rhs;
   return strcmp(*first, *second);
 }
 
@@ -1494,7 +1480,7 @@ static void print_x_extensions(void) {
       .opcode = X_OPCODE_LIST_EXTENSIONS,
       .request_len = sizeof(struct x_list_extensions_request) / 4,
   };
-  struct x_list_extensions_reply reply = {};
+  struct x_list_extensions_reply reply = {0};
   char *additional_data = 0;
   char **extension_names = 0;
 
@@ -1532,9 +1518,7 @@ static void print_x_extensions(void) {
     curr_data += name_len;
   }
 
-#undef LEFT_PAD
 #undef FIELD_WIDTH
-#define LEFT_PAD 4
 #define FIELD_WIDTH 41
   qsort(extension_names, reply.num_names, sizeof(char *), string_comparator);
   printf("\nSupported extensions: %u\n", reply.num_names);
