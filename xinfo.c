@@ -72,6 +72,32 @@ static ssize_t write_n(int fd, const void *buffer, size_t n) {
 #define X_BACKING_STORES_NEVER 0
 #define X_BACKING_STORES_WHEN_MAPPED 1
 
+#define X_EVENT_MASK_KEY_PRESS 0x00000001u
+#define X_EVENT_MASK_KEY_RELEASE 0x00000002u
+#define X_EVENT_MASK_BUTTON_PRESS 0x00000004u
+#define X_EVENT_MASK_BUTTON_RELEASE 0x00000008u
+#define X_EVENT_MASK_ENTER_WINDOW 0x00000010u
+#define X_EVENT_MASK_LEAVE_WINDOW 0x00000020u
+#define X_EVENT_MASK_POINTER_MOTION 0x00000040u
+#define X_EVENT_MASK_POINTER_MOTION_HINT 0x00000080u
+#define X_EVENT_MASK_BUTTON1_MOTION 0x00000100u
+#define X_EVENT_MASK_BUTTON2_MOTION 0x00000200u
+#define X_EVENT_MASK_BUTTON3_MOTION 0x00000400u
+#define X_EVENT_MASK_BUTTON4_MOTION 0x00000800u
+#define X_EVENT_MASK_BUTTON5_MOTION 0x00001000u
+#define X_EVENT_MASK_BUTTON_MOTION 0x00002000u
+#define X_EVENT_MASK_KEYMAP_STATE 0x00004000u
+#define X_EVENT_MASK_EXPOSURE 0x00008000u
+#define X_EVENT_MASK_VISIBILITY_CHANGE 0x00010000u
+#define X_EVENT_MASK_STRUCTURE_NOTIFY 0x00020000u
+#define X_EVENT_MASK_RESIZE_REDIRECT 0x00040000u
+#define X_EVENT_MASK_SUBSTRUCTURE_NOTIFY 0x00080000u
+#define X_EVENT_MASK_SUBSTRUCTURE_REDIRECT 0x00100000u
+#define X_EVENT_MASK_FOCUS_CHANGE 0x00200000u
+#define X_EVENT_MASK_PROPERTY_CHANGE 0x00400000u
+#define X_EVENT_MASK_COLORMAP_CHANGE 0x00800000u
+#define X_EVENT_MASK_OWNER_GRAB_BUTTON 0x01000000u
+
 struct x_setup_request {
   uint8_t byte_order; /* Either 'B' for big endian, or 'l' for little endian */
   uint8_t pad1;
@@ -568,6 +594,8 @@ static void x_connect_to_display(const char *full_display_name) {
   free(auth_data);
 }
 
+static const char *bool_to_string(int value) { return value ? "yes" : "no"; }
+
 static void x_connect(void) {
   /* The DISPLAY environment variable contains the name of the display on which
    * the application was started */
@@ -664,6 +692,7 @@ static void dump_x_connection_data(void) {
             : (screen->data.backing_stores == X_BACKING_STORES_WHEN_MAPPED
                    ? "when mapped"
                    : "always");
+
     PRINT_FIELD("Root", "0x%08x", screen->data.root);
     PRINT_FIELD("Default colormap", "0x%08x", screen->data.default_colormap);
     PRINT_FIELD("White pixel", "0x%08x", screen->data.white_pixel);
@@ -671,6 +700,90 @@ static void dump_x_connection_data(void) {
     /* TODO: Pretty-print this field */
     PRINT_FIELD("Current input mask", "0x%08x",
                 screen->data.current_input_mask);
+#undef LEFT_PAD
+#undef FIELD_WIDTH
+#define LEFT_PAD 6
+#define FIELD_WIDTH 39
+    PRINT_FIELD("Key press", "%s",
+                bool_to_string(screen->data.current_input_mask &
+                               X_EVENT_MASK_KEY_PRESS));
+    PRINT_FIELD("Key release", "%s",
+                bool_to_string(screen->data.current_input_mask &
+                               X_EVENT_MASK_KEY_RELEASE));
+    PRINT_FIELD("Button press", "%s",
+                bool_to_string(screen->data.current_input_mask &
+                               X_EVENT_MASK_BUTTON_PRESS));
+    PRINT_FIELD("Button release", "%s",
+                bool_to_string(screen->data.current_input_mask &
+                               X_EVENT_MASK_BUTTON_RELEASE));
+    PRINT_FIELD("Enter window", "%s",
+                bool_to_string(screen->data.current_input_mask &
+                               X_EVENT_MASK_ENTER_WINDOW));
+    PRINT_FIELD("Leave window", "%s",
+                bool_to_string(screen->data.current_input_mask &
+                               X_EVENT_MASK_LEAVE_WINDOW));
+    PRINT_FIELD("Pointer motion", "%s",
+                bool_to_string(screen->data.current_input_mask &
+                               X_EVENT_MASK_POINTER_MOTION));
+    PRINT_FIELD("Pointer motion hint", "%s",
+                bool_to_string(screen->data.current_input_mask &
+                               X_EVENT_MASK_POINTER_MOTION_HINT));
+    PRINT_FIELD("Button 1 motion", "%s",
+                bool_to_string(screen->data.current_input_mask &
+                               X_EVENT_MASK_BUTTON1_MOTION));
+    PRINT_FIELD("Button 2 motion", "%s",
+                bool_to_string(screen->data.current_input_mask &
+                               X_EVENT_MASK_BUTTON2_MOTION));
+    PRINT_FIELD("Button 3 motion", "%s",
+                bool_to_string(screen->data.current_input_mask &
+                               X_EVENT_MASK_BUTTON3_MOTION));
+    PRINT_FIELD("Button 4 motion", "%s",
+                bool_to_string(screen->data.current_input_mask &
+                               X_EVENT_MASK_BUTTON4_MOTION));
+    PRINT_FIELD("Button 5 motion", "%s",
+                bool_to_string(screen->data.current_input_mask &
+                               X_EVENT_MASK_BUTTON5_MOTION));
+    PRINT_FIELD("Button motion", "%s",
+                bool_to_string(screen->data.current_input_mask &
+                               X_EVENT_MASK_BUTTON_MOTION));
+    PRINT_FIELD("Keymap state", "%s",
+                bool_to_string(screen->data.current_input_mask &
+                               X_EVENT_MASK_KEYMAP_STATE));
+    PRINT_FIELD("Exposure", "%s",
+                bool_to_string(screen->data.current_input_mask &
+                               X_EVENT_MASK_EXPOSURE));
+    PRINT_FIELD("Visibility change", "%s",
+                bool_to_string(screen->data.current_input_mask &
+                               X_EVENT_MASK_VISIBILITY_CHANGE));
+    PRINT_FIELD("Structure notify", "%s",
+                bool_to_string(screen->data.current_input_mask &
+                               X_EVENT_MASK_STRUCTURE_NOTIFY));
+    PRINT_FIELD("Resize redirect", "%s",
+                bool_to_string(screen->data.current_input_mask &
+                               X_EVENT_MASK_RESIZE_REDIRECT));
+    PRINT_FIELD("Substructure notify", "%s",
+                bool_to_string(screen->data.current_input_mask &
+                               X_EVENT_MASK_SUBSTRUCTURE_NOTIFY));
+    PRINT_FIELD("Substructure redirect", "%s",
+                bool_to_string(screen->data.current_input_mask &
+                               X_EVENT_MASK_SUBSTRUCTURE_REDIRECT));
+    PRINT_FIELD("Focus change", "%s",
+                bool_to_string(screen->data.current_input_mask &
+                               X_EVENT_MASK_FOCUS_CHANGE));
+    PRINT_FIELD("Property change", "%s",
+                bool_to_string(screen->data.current_input_mask &
+                               X_EVENT_MASK_PROPERTY_CHANGE));
+    PRINT_FIELD("Colormap change", "%s",
+                bool_to_string(screen->data.current_input_mask &
+                               X_EVENT_MASK_COLORMAP_CHANGE));
+    PRINT_FIELD("Owner grab button", "%s",
+                bool_to_string(screen->data.current_input_mask &
+                               X_EVENT_MASK_OWNER_GRAB_BUTTON));
+
+#undef LEFT_PAD
+#undef FIELD_WIDTH
+#define LEFT_PAD 4
+#define FIELD_WIDTH 41
     PRINT_FIELD("Size", "%ux%u pixels (%ux%u mm)", screen->data.width_in_pixels,
                 screen->data.height_in_pixels,
                 screen->data.width_in_millimeters,
@@ -680,10 +793,11 @@ static void dump_x_connection_data(void) {
                 screen->data.max_installed_maps);
     PRINT_FIELD("Root visual id", "0x%08x", screen->data.root_visual_id);
     PRINT_FIELD("Backing stores", "%s", backing_stores);
-    PRINT_FIELD("Save unders", "%s", screen->data.save_unders ? "yes" : "no");
+    PRINT_FIELD("Save unders", "%s", bool_to_string(screen->data.save_unders));
     PRINT_FIELD("Root depth", "%u", screen->data.root_depth);
     PRINT_FIELD("Number of allowed depths", "%u",
                 screen->data.num_allowed_depths);
+
     printf("    Allowed depths:\n");
     for (size_t j = 0; j < screen->data.num_allowed_depths; ++j)
       printf("      * depth = %2u, number of visuals: %u\n",
@@ -694,10 +808,9 @@ static void dump_x_connection_data(void) {
 
 int main() {
   printf("xinfo - X server information dumper\n\n");
+
   x_connect();
-
   dump_x_connection_data();
-
   x_disconnect();
   return 0;
 }
