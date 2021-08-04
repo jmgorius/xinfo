@@ -1117,6 +1117,14 @@ static int x_xtest_query_version(unsigned int opcode, unsigned int *major,
   return 0;
 }
 
+static int x_invalid_query_version(unsigned int opcode, unsigned int *major,
+                                   unsigned int *minor) {
+  (void)opcode;
+  *major = 0;
+  *minor = 0;
+  return 1;
+}
+
 struct x_extension_info {
   const char *name;
   int (*version_query_func)(unsigned int opcode, unsigned int *major,
@@ -1162,7 +1170,7 @@ static struct x_extension_info x_extensions[] = {
     {.name = X_EXTENSION_NAME_NV_CONTROL,
      .version_query_func = x_generic_query_version16_noparam_zero},
     {.name = X_EXTENSION_NAME_NV_GLX, /* alias for GLX */
-     .version_query_func = x_glx_query_version},
+     .version_query_func = x_invalid_query_version},
     {.name = X_EXTENSION_NAME_PRESENT,
      .version_query_func = x_generic_query_version32_zero},
     {.name = X_EXTENSION_NAME_RANDR,
@@ -1554,13 +1562,18 @@ static void print_x_extensions(void) {
   qsort(extension_names, reply.num_names, sizeof(char *), string_comparator);
   printf("\nSupported extensions: %u\n", reply.num_names);
   for (size_t i = 0; i < reply.num_names; ++i) {
-    unsigned int opcode = x_get_extension_opcode(extension_names[i]);
+    const char *extension_name = extension_names[i];
+    /* The Nvidia implementation doesn't seem to provide a documented version
+     * querying request. Delegate to GLX instead */
+    if (strcmp(extension_names[i], X_EXTENSION_NAME_NV_GLX) == 0)
+      extension_name = X_EXTENSION_NAME_GLX;
+    unsigned int opcode = x_get_extension_opcode(extension_name);
     if (opcode) {
       unsigned int version_major = 0;
       unsigned int version_minor = 0;
       printf("  * %s%.*s ", extension_names[i],
              (int)(FIELD_WIDTH - strlen(extension_names[i])), FILL);
-      if (x_get_extension_version(extension_names[i], opcode, &version_major,
+      if (x_get_extension_version(extension_name, opcode, &version_major,
                                   &version_minor) == 0)
         printf("v%u.%u\n", version_major, version_minor);
       else
