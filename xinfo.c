@@ -434,7 +434,7 @@ static void parse_x_display_name(const char *full_name, char *hostname,
    *    omitted hostname means localhost.
    *  - D is a sequence number (usually zero). It can vary if there are multiple
    *    displays connected to a single computer.
-   *  - S is the screen number. While a display can gave multiple screens, there
+   *  - S is the screen number. While a display can have multiple screens, there
    *    is usually just one. Zero is the default value if S is omitted.
    *
    * In X parlance, a "display" is a collection of monitors linked to a common
