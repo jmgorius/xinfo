@@ -462,10 +462,14 @@ static void parse_x_display_name(const char *full_name, char *hostname,
   *number = strtoul(curr, &end, 10);
   if (errno != 0)
     die("Invalid X display sequence number in display name");
-  curr = end;
-  *screen = strtoul(curr, 0, 10);
-  if (errno != 0)
-    die("Invalid X screen number in display name");
+  if(*end == '\0') {
+    *screen = 0;
+  } else {
+    curr = end + 1; /* Skip the dot */
+    *screen = strtoul(curr, 0, 10);
+    if (errno != 0)
+      die("Invalid X screen number in display name");
+  }
 }
 
 static int get_socket_for_display(const char *full_display_name) {
