@@ -1601,7 +1601,7 @@ extensions_error:
   fprintf(stderr, "ERROR: Failed to query supported X extensions");
 }
 
-int main() {
+int main(void) {
   printf("xinfo - X server information printer\n\n");
 
   x_connect();
